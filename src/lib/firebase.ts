@@ -10,11 +10,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:1078902711273:web:7f9e6b16a92d7a6d186178',
 };
 
-// Initialize on first use, not while Next.js imports routes during a build.
+// Khởi tạo Firestore kết nối trực tiếp dự án tonkho-691c7
 export function getDb() {
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
-    throw new Error('Thiếu cấu hình Firebase: NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_PROJECT_ID, NEXT_PUBLIC_FIREBASE_APP_ID. Cấu hình trước khi build và redeploy.');
-  }
   const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   return getFirestore(app);
 }
