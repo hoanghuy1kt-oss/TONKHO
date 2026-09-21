@@ -138,6 +138,31 @@ export default function AdminPage() {
     }
   };
 
+  const [clearingAll, setClearingAll] = useState(false);
+
+  const handleClearAllData = async () => {
+    const confirmation = prompt(
+      'CẢNH BÁO NGUY HIỂM:\nHành động này sẽ XÓA TOÀN BỘ dữ liệu gồm tất cả sản phẩm, lô hàng và ảnh kiểm kho.\n\nNhập chữ "XOA" vào ô bên dưới để xác nhận:'
+    );
+    if (confirmation !== 'XOA') {
+      if (confirmation !== null) alert('Mã xác nhận không đúng. Đã hủy thao tác.');
+      return;
+    }
+
+    setClearingAll(true);
+    try {
+      const res = await fetch('/api/admin/clear-all', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lỗi khi xóa dữ liệu');
+      alert('Đã xóa sạch toàn bộ dữ liệu thành công!');
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi xóa dữ liệu');
+    } finally {
+      setClearingAll(false);
+    }
+  };
+
   const totalQuantityOverall = summaries.reduce((s, item) => s + (item.total_quantity || 0), 0);
   const totalBatchesOverall = summaries.reduce((s, item) => s + (item.batch_count || 0), 0);
 
@@ -172,6 +197,16 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={clearingAll}
+              onClick={handleClearAllData}
+              className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+              title="Xóa toàn bộ sản phẩm và lô hàng"
+            >
+              {clearingAll ? 'Đang xóa...' : '🗑️ Reset kho'}
+            </button>
+
             <button
               type="button"
               onClick={handleExportExcel}

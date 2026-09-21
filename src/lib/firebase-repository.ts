@@ -406,6 +406,42 @@ export class FirebaseInventoryRepository {
     result.sort((a, b) => b.total_quantity - a.total_quantity);
     return result;
   }
+
+  /**
+   * Xóa toàn bộ dữ liệu kiểm kho:
+   * products, inventoryEntries, inventoryHistory, inventoryPhotos
+   */
+  async clearAllData(): Promise<{ deletedCounts: Record<string, number> }> {
+    const collectionsToClear = [
+      'products',
+      'inventoryEntries',
+      'inventoryHistory',
+      'inventoryPhotos',
+    ];
+
+    const deletedCounts: Record<string, number> = {};
+
+    for (const collName of collectionsToClear) {
+      const snap = await getDocs(collection(getDb(), collName));
+      deletedCounts[collName] = snap.size;
+
+      if (!snap.empty) {
+        let batch = writeBatch(getDb());
+        let count = 0;
+        for (const doc of snap.docs) {
+          batch.delete(doc.ref);
+          count++;
+          if (count % 400 === 0) {
+            await batch.commit();
+            batch = writeBatch(getDb());
+          }
+        }
+        await batch.commit();
+      }
+    }
+
+    return { deletedCounts };
+  }
 }
 
 export const firebaseRepo = new FirebaseInventoryRepository();
