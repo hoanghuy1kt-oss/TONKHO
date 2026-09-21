@@ -1,98 +1,80 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { normalizeBarcode } from '@/lib/barcode-utils';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { normalizeBarcode, SUPPORTED_BARCODE_FORMATS } from '@/lib/barcode-utils';
 
 export interface UseBarcodeScannerOptions {
   onScan: (barcode: string) => void;
   formats?: readonly string[];
 }
+interface Detector {
+  detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string }>>;
+}
+interface DetectorConstructor {
+  new(options: { formats: string[] }): Detector;
+  getSupportedFormats(): Promise<string[]>;
+}
+type CameraCapabilities = MediaTrackCapabilities & { torch?: boolean };
 
-/**
- * Âm thanh bíp báo hiệu quét mã thành công (Web Audio API)
- */
 function playBeep() {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioCtx = window.AudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
-    osc.type = 'sine';
     osc.frequency.setValueAtTime(1200, ctx.currentTime);
     gain.gain.setValueAtTime(0.2, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.09);
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
+    osc.onended = () => { void ctx.close().catch(() => {}); };
     osc.start();
     osc.stop(ctx.currentTime + 0.09);
   } catch {
-    // Bỏ qua nếu trình duyệt chặn audio tự động
+    // Audio is optional on browsers that require a user gesture.
   }
 }
 
-/**
- * Mở luồng camera với các cấp độ fallback để đảm bảo luôn mở được trên mọi thiết bị
- */
 async function requestCameraStream(): Promise<MediaStream> {
-  // Cấp 1: Camera sau với độ phân giải tiêu chuẩn
   try {
     return await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
         width: { ideal: 1280 },
         height: { ideal: 720 },
+        frameRate: { ideal: 24, max: 30 },
       },
       audio: false,
     });
-  } catch (err1) {
-    console.warn('Fallback 1: Không mở được camera phân giải cao, thử cấu hình cơ bản:', err1);
+  } catch (error) {
+    // Permission/busy-device errors must not trigger repeated permission requests.
+    if (!(error instanceof Error) || error.name !== 'OverconstrainedError') throw error;
+    return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   }
-
-  // Cấp 2: Chỉ yêu cầu camera sau (không ép độ phân giải)
-  try {
-    return await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'environment',
-      },
-      audio: false,
-    });
-  } catch (err2) {
-    console.warn('Fallback 2: Không mở được camera sau chuyên dụng, thử camera mặc định:', err2);
-  }
-
-  // Cấp 3: Mở bất kỳ camera nào có sẵn trên máy
-  return await navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: false,
-  });
 }
 
-export function useBarcodeScanner({ onScan }: UseBarcodeScannerOptions) {
+export function useBarcodeScanner({ onScan, formats = SUPPORTED_BARCODE_FORMATS }: UseBarcodeScannerOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const sessionRef = useRef(0);
   const cleanupRef = useRef<(() => void) | null>(null);
-  const lastScanRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
-  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const optionsRef = useRef({ onScan, formats });
+  useEffect(() => { optionsRef.current = { onScan, formats }; }, [onScan, formats]);
+
+  const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasTorch, setHasTorch] = useState<boolean>(false);
-  const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
+  const [hasTorch, setHasTorch] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
 
   const stop = useCallback(() => {
-    if (cleanupRef.current) {
-      cleanupRef.current();
-      cleanupRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    // Invalidate every outstanding camera/play/detector promise immediately.
+    sessionRef.current += 1;
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
     setIsScanning(false);
     setIsTorchOn(false);
     setHasTorch(false);
@@ -101,193 +83,121 @@ export function useBarcodeScanner({ onScan }: UseBarcodeScannerOptions) {
   const start = useCallback(async () => {
     stop();
     setError(null);
+    const session = sessionRef.current;
+    const isCurrent = () => sessionRef.current === session;
+    let scanTimer: ReturnType<typeof setTimeout> | undefined;
+    const startupTimer = setTimeout(() => {
+      if (!isCurrent()) return;
+      stop();
+      setError('Camera hoặc bộ quét khởi động quá lâu. Hãy kiểm tra quyền camera và kết nối mạng, rồi thử lại.');
+    }, 15000);
+    cleanupRef.current = () => {
+      clearTimeout(startupTimer);
+      clearTimeout(scanTimer);
+    };
 
     try {
-      const targetFormats = [
-        'ean_13',
-        'ean_8',
-        'upc_a',
-        'upc_e',
-        'code_128',
-        'code_39',
-        'code_93',
-        'itf',
-        'qr_code',
-      ];
-
-      // 1. Khởi tạo Camera trước để người dùng thấy video ngay lập tức
-      const stream = await requestCameraStream();
-      streamRef.current = stream;
-      const track = stream.getVideoTracks()[0];
-
-      if (track) {
-        const capabilities: any = track.getCapabilities ? track.getCapabilities() : {};
-        if (capabilities.torch) {
-          setHasTorch(true);
-        }
-        if ((track as any).applyConstraints) {
-          try {
-            await (track as any).applyConstraints({
-              advanced: [{ focusMode: 'continuous' }],
-            });
-          } catch {
-            // Thiết bị không hỗ trợ continuous focus thì bỏ qua
-          }
-        }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera is unavailable');
       }
-
-      const video = videoRef.current;
-      if (!video) {
-        stream.getTracks().forEach((t) => t.stop());
+      const stream = await requestCameraStream();
+      if (!isCurrent()) {
+        stream.getTracks().forEach((track) => track.stop());
         return;
       }
-
-      // Đặt các thuộc tính bắt buộc cho trình duyệt di động (Samsung Internet, Chrome Android, iOS Safari)
+      streamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) { stop(); return; }
       video.muted = true;
       video.defaultMuted = true;
       video.playsInline = true;
-      video.setAttribute('playsinline', 'true');
-      video.setAttribute('webkit-playsinline', 'true');
       video.srcObject = stream;
+      // play() waits for enough data itself; do not swallow playback failures.
+      await video.play();
+      if (!isCurrent()) return;
 
-      // Đợi video sẵn sàng metadata trước khi play()
-      await new Promise<void>((resolve) => {
-        if (video.readyState >= 1) {
-          resolve();
-        } else {
-          const onLoaded = () => {
-            video.removeEventListener('loadedmetadata', onLoaded);
-            resolve();
-          };
-          video.addEventListener('loadedmetadata', onLoaded);
-          setTimeout(resolve, 800);
-        }
-      });
-
+      const track = stream.getVideoTracks()[0];
       try {
-        await video.play();
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          console.warn('Lỗi khi phát video:', err);
-        }
-      }
+        const capabilities = track?.getCapabilities?.() as CameraCapabilities | undefined;
+        setHasTorch(Boolean(capabilities?.torch));
+      } catch { /* Some mobile browsers don't implement getCapabilities. */ }
 
-      setIsScanning(true);
-
-      // 2. Khởi tạo bộ nhận diện Barcode (Ưu tiên Native BarcodeDetector, fallback sang WebAssembly Ponyfill)
-      let detector: any = null;
-      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+      let detector: Detector | undefined;
+      const targetFormats = [...optionsRef.current.formats];
+      const NativeDetector = (window as Window & { BarcodeDetector?: DetectorConstructor }).BarcodeDetector;
+      if (NativeDetector) {
         try {
-          const NativeDetector = (window as any).BarcodeDetector;
           const supported = await NativeDetector.getSupportedFormats();
-          const validFormats = targetFormats.filter((f) => supported.includes(f));
-          if (validFormats.length > 0) {
-            detector = new NativeDetector({ formats: validFormats });
-          }
-        } catch {
-          detector = null;
-        }
+          if (!isCurrent()) return;
+          const valid = targetFormats.filter((format) => supported.includes(format));
+          if (valid.length) detector = new NativeDetector({ formats: valid });
+        } catch { /* Use the bundled fallback if native detection is unavailable. */ }
       }
-
+      if (!isCurrent()) return;
       if (!detector) {
         const { BarcodeDetector } = await import('barcode-detector/ponyfill');
-        detector = new BarcodeDetector({
-          formats: targetFormats as any,
-        });
+        if (!isCurrent()) return;
+        const supported = await BarcodeDetector.getSupportedFormats();
+        if (!isCurrent()) return;
+        detector = new BarcodeDetector({ formats: supported.filter((format) => targetFormats.includes(format)) });
       }
+      if (!isCurrent()) return;
+      const activeDetector = detector;
 
-      let isDestroyed = false;
-      let rafId = 0;
-      let inFlight = false;
-
-      // 3. Vòng lặp nhận diện cực nhanh dựa trên requestAnimationFrame (30 - 60 FPS)
+      // One detection at a time, with a pause for video rendering on mobile CPUs.
       const scanLoop = async () => {
-        if (isDestroyed) return;
-
-        const currentVideo = videoRef.current;
-        if (
-          currentVideo &&
-          currentVideo.readyState >= 2 &&
-          currentVideo.videoWidth > 0 &&
-          !inFlight &&
-          detector
-        ) {
+        if (!isCurrent()) return;
+        if (video.readyState >= 2 && video.videoWidth > 0) {
           try {
-            inFlight = true;
-            const hits = await detector.detect(currentVideo);
-            if (hits && hits.length > 0) {
-              const hit = hits[0];
-              if (hit.rawValue) {
-                const now = Date.now();
-                const normalized = normalizeBarcode(hit.rawValue);
-                const { code, time } = lastScanRef.current;
-
-                // Debounce 1.5s nếu quét cùng 1 mã
-                if (code !== normalized || now - time > 1500) {
-                  lastScanRef.current = { code: normalized, time: now };
-                  playBeep();
-                  if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                    navigator.vibrate(80);
-                  }
-                  onScan(normalized);
-                }
-              }
+            const hits = await activeDetector.detect(video);
+            if (!isCurrent()) return;
+            clearTimeout(startupTimer);
+            setIsScanning(true);
+            const code = hits.map((hit) => normalizeBarcode(hit.rawValue)).find(Boolean);
+            if (code) {
+              stop();
+              playBeep();
+              navigator.vibrate?.(80);
+              optionsRef.current.onScan(code);
+              return;
             }
           } catch {
-            // Bỏ qua lỗi từng frame để quét tiếp liên tục
-          } finally {
-            inFlight = false;
+            // A transient frame error can be retried; startup remains bounded.
           }
         }
-
-        if (!isDestroyed) {
-          rafId = requestAnimationFrame(scanLoop);
-        }
+        if (isCurrent()) scanTimer = setTimeout(scanLoop, 150);
       };
-
-      rafId = requestAnimationFrame(scanLoop);
-
-      cleanupRef.current = () => {
-        isDestroyed = true;
-        cancelAnimationFrame(rafId);
-      };
-    } catch (err: any) {
-      console.error('Lỗi khởi động camera:', err);
-      if (err.name === 'NotAllowedError') {
-        setError('Bạn đã từ chối quyền camera. Vui lòng cấp quyền máy ảnh trong cài đặt trình duyệt.');
-      } else if (err.name === 'NotFoundError') {
-        setError('Không tìm thấy camera trên thiết bị của bạn.');
-      } else {
-        setError('Không thể mở camera. Vui lòng nhập mã vạch bằng tay.');
-      }
+      void scanLoop();
+    } catch (cause) {
+      if (!isCurrent()) return;
       stop();
+      const name = cause instanceof Error ? cause.name : '';
+      if (name === 'NotAllowedError') {
+        setError('Chưa được phép dùng camera. Hãy cấp quyền máy ảnh trong cài đặt trang web rồi thử lại.');
+      } else if (name === 'NotFoundError') {
+        setError('Không tìm thấy camera trên thiết bị.');
+      } else if (name === 'NotReadableError') {
+        setError('Camera đang bận. Hãy đóng ứng dụng khác đang dùng camera rồi thử lại.');
+      } else {
+        setError('Không thể khởi động bộ quét. Hãy thử lại hoặc đóng để nhập mã bằng tay.');
+      }
     }
-  }, [onScan, stop]);
+  }, [stop]);
+
+  useEffect(() => () => stop(), [stop]);
 
   const toggleTorch = useCallback(async () => {
-    if (!streamRef.current) return;
-    const track = streamRef.current.getVideoTracks()[0];
+    const track = streamRef.current?.getVideoTracks()[0];
     if (!track) return;
-
+    const session = sessionRef.current;
+    const nextState = !isTorchOn;
     try {
-      const nextState = !isTorchOn;
-      await (track as any).applyConstraints({
-        advanced: [{ torch: nextState }],
+      await track.applyConstraints({
+        advanced: [{ torch: nextState } as MediaTrackConstraintSet],
       });
-      setIsTorchOn(nextState);
-    } catch (err) {
-      console.warn('Lỗi bật/tắt đèn flash:', err);
-    }
+      if (session === sessionRef.current) setIsTorchOn(nextState);
+    } catch { /* Torch support is optional. */ }
   }, [isTorchOn]);
 
-  return {
-    videoRef,
-    isScanning,
-    error,
-    hasTorch,
-    isTorchOn,
-    start,
-    stop,
-    toggleTorch,
-  };
+  return { videoRef, isScanning, error, hasTorch, isTorchOn, start, stop, toggleTorch };
 }

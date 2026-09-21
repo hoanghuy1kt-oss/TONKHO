@@ -64,7 +64,7 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
         {!isScanning && !error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-400 gap-3 z-0">
             <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-medium">Đang khởi động camera...</p>
+            <p className="text-xs font-medium">Đang khởi động bộ quét...</p>
           </div>
         )}
 
@@ -85,7 +85,7 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
           <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
 
           {/* Tia laser quét chuyển động */}
-          <div className="w-full h-0.5 bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+          <div className="w-full h-0.5 bg-emerald-400 shadow-[0_0_8px_#34d399]" />
           <p className="text-xs text-emerald-200/90 font-medium bg-black/60 px-3 py-1 rounded-full">
             Đặt mã vạch vào khung này
           </p>
@@ -95,6 +95,10 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
         {error && (
           <div className="absolute bottom-6 inset-x-4 z-20 p-4 bg-rose-950/90 border border-rose-600 rounded-xl text-center text-sm text-rose-200">
             {error}
+            <div className="mt-3 flex justify-center gap-3">
+              <button type="button" onClick={() => void start()} className="rounded-lg bg-white px-4 py-2 font-semibold text-zinc-900">Thử lại</button>
+              <button type="button" onClick={onClose} className="rounded-lg border border-rose-300 px-4 py-2">Nhập mã bằng tay</button>
+            </div>
           </div>
         )}
       </div>
