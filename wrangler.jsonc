@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tonkho-app",
+  "account_id": "dc736286ee90e543020c3408bd23a5c8",
+  "compatibility_date": "2026-09-17",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tonkho-db",
+      "database_id": "233ff4a2-c66a-4c61-a560-278269191ea3",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "tonkho-photos"
+    }
+  ]
+}

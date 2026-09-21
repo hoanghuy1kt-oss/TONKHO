@@ -1,0 +1,49 @@
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+const accountId = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID || 'dc73628dee90e543020c3408bd23a5c8';
+const accessKeyId = process.env.R2_ACCESS_KEY_ID || '';
+const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || '';
+const bucketName = process.env.R2_BUCKET || 'tonkho-photos';
+
+export const r2Client = new S3Client({
+  region: 'auto',
+  endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId,
+    secretAccessKey,
+  },
+});
+
+/**
+ * Tạo URL PUT có chữ ký (presigned PUT) để trình duyệt upload trực tiếp lên R2.
+ */
+export async function getPresignedUploadUrl(photoKey: string, contentType = 'image/jpeg'): Promise<string> {
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('R2_ACCESS_KEY_ID hoặc R2_SECRET_ACCESS_KEY chưa được cấu hình.');
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: photoKey,
+    ContentType: contentType,
+  });
+
+  return await getSignedUrl(r2Client, command, { expiresIn: 600 }); // Hiệu lực 10 phút
+}
+
+/**
+ * Lấy URL công khai để xem ảnh từ photoKey.
+ */
+export function getPhotoUrl(photoKey: string): string {
+  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE || '';
+  if (!photoKey) return '';
+  if (photoKey.startsWith('http://') || photoKey.startsWith('https://')) {
+    return photoKey;
+  }
+  if (!base) {
+    // Fallback nếu chưa cấu hình public domain R2
+    return `/api/photos/view?key=${encodeURIComponent(photoKey)}`;
+  }
+  return `${base.replace(/\/$/, '')}/${photoKey}`;
+}
