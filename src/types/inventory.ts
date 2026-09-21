@@ -2,6 +2,8 @@ export interface Product {
   barcode: string;
   name: string;
   unit?: string | null;
+  weight?: string | null;
+  flavor?: string | null;
   updated_at: number;
 }
 
@@ -11,6 +13,9 @@ export interface InventoryEntry {
   id: string;
   barcode: string;
   product_name: string;
+  unit?: string | null;
+  weight?: string | null;
+  flavor?: string | null;
   expiry_date: string; // YYYY-MM-DD
   quantity: number;
   note?: string | null;
@@ -47,6 +52,9 @@ export interface EntryDraft {
   id?: string;
   barcode: string;
   product_name: string;
+  unit?: string;
+  weight?: string;
+  flavor?: string;
   expiry_date: string;
   quantity: number;
   note?: string;

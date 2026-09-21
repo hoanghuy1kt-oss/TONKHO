@@ -31,6 +31,9 @@ export async function PATCH(
         expiry_date: updates.expiry_date,
         photo_key: updates.photo_key,
         note: updates.note,
+        unit: updates.unit,
+        weight: updates.weight,
+        flavor: updates.flavor,
       },
       staff
     );

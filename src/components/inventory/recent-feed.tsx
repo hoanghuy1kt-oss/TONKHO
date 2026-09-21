@@ -64,13 +64,15 @@ export function RecentFeed({ entries, loading, onSelectEntry }: RecentFeedProps)
                   {entry.product_name}
                 </h4>
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                  SL: {entry.quantity}
+                  SL: {entry.quantity} {entry.unit || ''}
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                 <span className="truncate">
                   Mã: {entry.barcode} • HSD: {entry.expiry_date}
+                  {entry.weight ? ` • ${entry.weight}` : ''}
+                  {entry.flavor ? ` • ${entry.flavor}` : ''}
                 </span>
                 <span className="text-[11px] text-zinc-400 shrink-0 ml-2">
                   {entry.last_edited_by_name} • {timeStr}

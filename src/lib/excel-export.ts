@@ -9,6 +9,9 @@ export async function exportInventoryToExcel(entries: InventoryEntry[], filename
   const HEADER_ROW = [
     { value: 'Mã vạch (Barcode)', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff', align: 'center' as const },
     { value: 'Tên sản phẩm', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff' },
+    { value: 'Đơn vị tính', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff', align: 'center' as const },
+    { value: 'Trọng lượng', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff', align: 'center' as const },
+    { value: 'Hương vị / Mùi', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff' },
     { value: 'Hạn sử dụng (EXP)', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff', align: 'center' as const },
     { value: 'Số lượng', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff', align: 'right' as const },
     { value: 'Người tạo', fontWeight: 'bold' as const, backgroundColor: '#10b981', color: '#ffffff' },
@@ -44,6 +47,9 @@ export async function exportInventoryToExcel(entries: InventoryEntry[], filename
     return [
       { type: String, value: row.barcode },
       { type: String, value: row.product_name },
+      { type: String, value: row.unit || '', align: 'center' as const },
+      { type: String, value: row.weight || '', align: 'center' as const },
+      { type: String, value: row.flavor || '' },
       { type: String, value: row.expiry_date, align: 'center' as const },
       { type: Number, value: row.quantity, align: 'right' as const },
       { type: String, value: row.created_by_name },
@@ -58,6 +64,9 @@ export async function exportInventoryToExcel(entries: InventoryEntry[], filename
     columns: [
       { width: 18 },
       { width: 32 },
+      { width: 14 },
+      { width: 14 },
+      { width: 18 },
       { width: 16 },
       { width: 12 },
       { width: 18 },

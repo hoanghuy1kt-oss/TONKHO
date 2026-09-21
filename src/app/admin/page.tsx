@@ -10,6 +10,8 @@ interface StockSummaryItem {
   barcode: string;
   name: string;
   unit?: string | null;
+  weight?: string | null;
+  flavor?: string | null;
   total_quantity: number;
   batch_count: number;
 }
@@ -144,7 +146,10 @@ export default function AdminPage() {
     return (
       e.product_name.toLowerCase().includes(q) ||
       e.barcode.toLowerCase().includes(q) ||
-      e.created_by_name.toLowerCase().includes(q)
+      e.created_by_name.toLowerCase().includes(q) ||
+      (e.unit && e.unit.toLowerCase().includes(q)) ||
+      (e.weight && e.weight.toLowerCase().includes(q)) ||
+      (e.flavor && e.flavor.toLowerCase().includes(q))
     );
   });
 
@@ -252,6 +257,9 @@ export default function AdminPage() {
                   <tr>
                     <th className="py-3 px-4">Mã vạch</th>
                     <th className="py-3 px-4">Tên sản phẩm</th>
+                    <th className="py-3 px-3 text-center">ĐVT</th>
+                    <th className="py-3 px-3 text-center">Trọng lượng</th>
+                    <th className="py-3 px-3">Hương vị / Mùi</th>
                     <th className="py-3 px-4 text-center">Số lô</th>
                     <th className="py-3 px-4 text-right">Tổng số lượng</th>
                     <th className="py-3 px-4 text-center">Thao tác</th>
@@ -264,9 +272,24 @@ export default function AdminPage() {
                       <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
                         {item.name}
                       </td>
+                      <td className="py-3 px-3 text-center text-zinc-600 dark:text-zinc-300">
+                        {item.unit ? (
+                          <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 font-medium">
+                            {item.unit}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-center text-zinc-600 dark:text-zinc-300 font-mono">
+                        {item.weight || '-'}
+                      </td>
+                      <td className="py-3 px-3 text-zinc-600 dark:text-zinc-300">
+                        {item.flavor || '-'}
+                      </td>
                       <td className="py-3 px-4 text-center text-zinc-500">{item.batch_count}</td>
                       <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {item.total_quantity.toLocaleString('vi-VN')}
+                        {item.total_quantity.toLocaleString('vi-VN')} {item.unit || ''}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
@@ -291,7 +314,7 @@ export default function AdminPage() {
                   ))}
                   {summaries.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-zinc-400">
+                      <td colSpan={8} className="py-8 text-center text-zinc-400">
                         Chưa có dữ liệu sản phẩm
                       </td>
                     </tr>
@@ -352,11 +375,23 @@ export default function AdminPage() {
                           <div className="font-semibold text-zinc-900 dark:text-zinc-100">
                             {row.product_name}
                           </div>
-                          <div className="text-[11px] text-zinc-400 font-mono">{row.barcode}</div>
+                          <div className="text-[11px] text-zinc-400 font-mono flex items-center flex-wrap gap-1.5 mt-0.5">
+                            <span>{row.barcode}</span>
+                            {row.weight && (
+                              <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded text-[10px] font-medium font-sans">
+                                ⚖️ {row.weight}
+                              </span>
+                            )}
+                            {row.flavor && (
+                              <span className="px-1.5 py-0.5 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded text-[10px] font-medium font-sans">
+                                🌿 {row.flavor}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2.5 px-3 text-center font-medium">{row.expiry_date}</td>
                         <td className="py-2.5 px-3 text-center font-bold text-emerald-600">
-                          {row.quantity}
+                          {row.quantity} {row.unit || ''}
                         </td>
                         <td className="py-2.5 px-4">
                           <div>{row.created_by_name}</div>
@@ -512,7 +547,7 @@ export default function AdminPage() {
               </div>
 
               {/* Stats overview */}
-              <div className="grid grid-cols-3 gap-3 my-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
                 <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
                   <span className="text-[11px] text-zinc-400">Tổng tồn kho</span>
                   <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
@@ -528,10 +563,23 @@ export default function AdminPage() {
                 <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
                   <span className="text-[11px] text-zinc-400">Đơn vị tính</span>
                   <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                    {productSummary.unit || 'Mặc định'}
+                    {productSummary.unit || 'Chưa đặt'}
+                  </div>
+                </div>
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
+                  <span className="text-[11px] text-zinc-400">Trọng lượng</span>
+                  <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                    {productSummary.weight || 'Chưa đặt'}
                   </div>
                 </div>
               </div>
+
+              {productSummary.flavor && (
+                <div className="mb-3 px-3.5 py-2 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-100 dark:border-purple-900 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                  <span>🌿</span>
+                  <span>Hương vị / Mùi: <strong>{productSummary.flavor}</strong></span>
+                </div>
+              )}
 
               {/* Batches Table */}
               <div className="flex-1 overflow-y-auto space-y-3">
@@ -590,7 +638,7 @@ export default function AdminPage() {
                               </td>
                               <td className="py-2 px-3 text-center font-medium">{batch.expiry_date}</td>
                               <td className="py-2 px-3 text-center font-bold text-emerald-600">
-                                {batch.quantity}
+                                {batch.quantity} {batch.unit || ''}
                               </td>
                               <td className="py-2 px-3">
                                 <div>{batch.created_by_name}</div>

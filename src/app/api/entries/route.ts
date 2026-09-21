@@ -39,6 +39,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Thiếu thông tin bắt buộc của lô kiểm kê' }, { status: 400 });
     }
 
+    if (!draft.unit || !draft.unit.trim()) {
+      return NextResponse.json({ error: 'Đơn vị tính là bắt buộc' }, { status: 400 });
+    }
+
+    if (!draft.weight || !draft.weight.trim()) {
+      return NextResponse.json({ error: 'Trọng lượng (g/kg) là bắt buộc' }, { status: 400 });
+    }
+
     if (!draft.photo_key) {
       return NextResponse.json({ error: 'Hình ảnh kiểm kê là bắt buộc' }, { status: 400 });
     }

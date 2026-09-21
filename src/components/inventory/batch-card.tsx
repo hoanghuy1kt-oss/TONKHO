@@ -48,7 +48,7 @@ export function BatchCard({ batch, onEdit, onDelete }: BatchCardProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-            SL: {batch.quantity}
+            SL: {batch.quantity} {batch.unit || ''}
           </span>
           <span
             className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${
@@ -62,6 +62,21 @@ export function BatchCard({ batch, onEdit, onDelete }: BatchCardProps) {
             HSD: {batch.expiry_date}
           </span>
         </div>
+
+        {(batch.weight || batch.flavor) && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            {batch.weight && (
+              <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium">
+                ⚖️ {batch.weight}
+              </span>
+            )}
+            {batch.flavor && (
+              <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-medium truncate max-w-[160px]" title={batch.flavor}>
+                🌿 {batch.flavor}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">
           Người nhập: <span className="font-medium text-zinc-700 dark:text-zinc-300">{batch.created_by_name}</span>

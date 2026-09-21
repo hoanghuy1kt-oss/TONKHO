@@ -94,11 +94,19 @@ export class FirebaseInventoryRepository {
         throw new Error('Xung đột dữ liệu: Mã lô đã tồn tại.');
       }
       batch.set(doc(getDb(), 'products', draft.barcode), {
-        barcode: draft.barcode, name: draft.product_name, updated_at: now,
+        barcode: draft.barcode,
+        name: draft.product_name,
+        ...(draft.unit ? { unit: draft.unit } : {}),
+        ...(draft.weight ? { weight: draft.weight } : {}),
+        ...(draft.flavor ? { flavor: draft.flavor } : {}),
+        updated_at: now,
       }, { merge: true });
       const newEntry: Omit<InventoryEntry, 'id'> = {
         barcode: draft.barcode,
         product_name: draft.product_name,
+        unit: draft.unit || null,
+        weight: draft.weight || null,
+        flavor: draft.flavor || null,
         expiry_date: draft.expiry_date,
         quantity: draft.quantity,
         note: draft.note || null,
@@ -147,6 +155,9 @@ export class FirebaseInventoryRepository {
       expiry_date: string;
       photo_key?: string;
       note?: string | null;
+      unit?: string | null;
+      weight?: string | null;
+      flavor?: string | null;
     },
     staff: { name: string; uid: string }
   ): Promise<InventoryEntry> {
@@ -176,6 +187,9 @@ export class FirebaseInventoryRepository {
         expiry_date: updates.expiry_date,
         photo_key: finalPhotoKey,
         note: updates.note !== undefined ? updates.note : current.note,
+        ...(updates.unit !== undefined ? { unit: updates.unit } : {}),
+        ...(updates.weight !== undefined ? { weight: updates.weight } : {}),
+        ...(updates.flavor !== undefined ? { flavor: updates.flavor } : {}),
         rev: nextRev,
         updated_at: now,
         last_edited_by_name: staff.name,
@@ -343,10 +357,10 @@ export class FirebaseInventoryRepository {
    * Thống kê tổng hợp cho Admin: tổng số lượng theo từng mặt hàng
    */
   async getAdminStockSummary(): Promise<
-    Array<{ barcode: string; name: string; unit?: string | null; total_quantity: number; batch_count: number }>
+    Array<{ barcode: string; name: string; unit?: string | null; weight?: string | null; flavor?: string | null; total_quantity: number; batch_count: number }>
   > {
     const productsSnap = await getDocs(collection(getDb(), 'products'));
-    const productsMap = new Map<string, { barcode: string; name: string; unit?: string | null; total_quantity: number; batch_count: number }>();
+    const productsMap = new Map<string, { barcode: string; name: string; unit?: string | null; weight?: string | null; flavor?: string | null; total_quantity: number; batch_count: number }>();
 
     productsSnap.forEach((docSnap) => {
       const p = docSnap.data() as Product;
@@ -354,6 +368,8 @@ export class FirebaseInventoryRepository {
         barcode: p.barcode,
         name: p.name,
         unit: p.unit || null,
+        weight: p.weight || null,
+        flavor: p.flavor || null,
         total_quantity: 0,
         batch_count: 0,
       });
@@ -370,11 +386,17 @@ export class FirebaseInventoryRepository {
         item = {
           barcode: e.barcode,
           name: e.product_name,
-          unit: null,
+          unit: e.unit || null,
+          weight: e.weight || null,
+          flavor: e.flavor || null,
           total_quantity: 0,
           batch_count: 0,
         };
         productsMap.set(e.barcode, item);
+      } else {
+        if (!item.unit && e.unit) item.unit = e.unit;
+        if (!item.weight && e.weight) item.weight = e.weight;
+        if (!item.flavor && e.flavor) item.flavor = e.flavor;
       }
       item.total_quantity += e.quantity || 0;
       item.batch_count += 1;

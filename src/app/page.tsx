@@ -351,6 +351,9 @@ export default function Home() {
         onClose={() => setIsEntryModalOpen(false)}
         barcode={activeBarcode}
         productName={product?.name || ''}
+        productUnit={product?.unit}
+        productWeight={product?.weight}
+        productFlavor={product?.flavor}
         existingBatch={selectedBatchForEdit}
         staff={{ name: staffName, uid: staffUid }}
         onSuccess={handleEntrySuccess}
