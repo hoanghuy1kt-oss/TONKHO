@@ -25,6 +25,7 @@ export function EntryModal({
   onSuccess,
 }: EntryModalProps) {
   const isEditing = Boolean(existingBatch);
+  const [currentBarcode, setCurrentBarcode] = useState(barcode);
   const [name, setName] = useState(productName);
   const [quantity, setQuantity] = useState<number>(existingBatch?.quantity || 1);
   const [expiryDate, setExpiryDate] = useState<string>(
@@ -43,6 +44,7 @@ export function EntryModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setCurrentBarcode(barcode);
     setName(productName);
     setSelectedFile(null);
     if (existingBatch) {
@@ -60,7 +62,7 @@ export function EntryModal({
       setSelectedFile(null);
     }
     setError('');
-  }, [existingBatch, productName, isOpen]);
+  }, [existingBatch, productName, barcode, isOpen]);
 
   if (!isOpen) return null;
 
@@ -77,6 +79,12 @@ export function EntryModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const effectiveBarcode = (isEditing ? barcode : currentBarcode).trim();
+    if (!effectiveBarcode) {
+      setError('Mã vạch không được để trống');
+      return;
+    }
 
     if (!name.trim()) {
       setError('Vui lòng nhập tên sản phẩm');
@@ -102,10 +110,10 @@ export function EntryModal({
       setSubmitting(true);
       let currentPhotoKey = photoKey;
 
-      // Nếu có file ảnh mới được chụp/chọn -> tải lên R2
+      // Nếu có file ảnh mới được chụp/chọn -> tải lên Firebase
       if (selectedFile) {
         setUploading(true);
-        currentPhotoKey = await uploadPhotoToFirebase(selectedFile, barcode, (percent) => {
+        currentPhotoKey = await uploadPhotoToFirebase(selectedFile, effectiveBarcode, (percent) => {
           setUploadProgress(percent);
         });
         setUploading(false);
@@ -135,7 +143,7 @@ export function EntryModal({
       } else {
         // Thêm lô mới (POST)
         const draft: EntryDraft = {
-          barcode,
+          barcode: effectiveBarcode,
           product_name: name.trim(),
           expiry_date: expiryDate,
           quantity,
@@ -174,9 +182,23 @@ export function EntryModal({
             <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               {isEditing ? 'Chỉnh sửa lô hàng' : 'Thêm lô mới'}
             </span>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-              Mã: {barcode}
-            </h2>
+            {isEditing ? (
+              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 font-mono">
+                Mã: {barcode}
+              </h2>
+            ) : (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-xs font-bold text-zinc-400">Mã:</span>
+                <input
+                  type="text"
+                  value={currentBarcode}
+                  onChange={(e) => setCurrentBarcode(e.target.value)}
+                  placeholder="Mã vạch..."
+                  required
+                  className="px-2 py-0.5 text-sm font-mono font-bold rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -298,7 +320,7 @@ export function EntryModal({
             {uploading && (
               <div className="mt-2 space-y-1">
                 <div className="flex justify-between text-xs text-zinc-500">
-                  <span>Đang tải ảnh lên Cloudflare R2...</span>
+                  <span>Đang tải ảnh lên Firebase...</span>
                   <span>{uploadProgress}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">

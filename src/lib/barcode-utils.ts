@@ -7,16 +7,12 @@ export const SUPPORTED_BARCODE_FORMATS = [
 ] as const;
 
 /**
- * Chuẩn hóa mã vạch: loại bỏ khoảng trắng, ký tự đặc biệt,
- * chuẩn hóa UPC-A 12 số thành EAN-13 (thêm số 0 ở đầu).
+ * Chuẩn hóa mã vạch: loại bỏ khoảng trắng và ký tự xuống dòng thừa,
+ * giữ nguyên chính xác 100% các ký tự số của mã vạch đã quét hoặc nhập.
  */
 export function normalizeBarcode(raw: string): string {
-  const cleaned = raw.trim().replace(/\s+/g, '');
-  // Nếu là UPC-A 12 chữ số, chuẩn hóa thành EAN-13 có số 0 dẫn đầu
-  if (/^\d{12}$/.test(cleaned)) {
-    return '0' + cleaned;
-  }
-  return cleaned;
+  if (!raw) return '';
+  return raw.trim().replace(/\s+/g, '');
 }
 
 /**

@@ -7,8 +7,17 @@ export interface UseBarcodeScannerOptions {
   onScan: (barcode: string) => void;
   formats?: readonly string[];
 }
+interface DetectedBarcode {
+  rawValue: string;
+  boundingBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
 interface Detector {
-  detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string }>>;
+  detect(video: HTMLVideoElement): Promise<DetectedBarcode[]>;
 }
 interface DetectorConstructor {
   new(options: { formats: string[] }): Detector;
@@ -153,13 +162,29 @@ export function useBarcodeScanner({ onScan, formats = SUPPORTED_BARCODE_FORMATS 
             if (!isCurrent()) return;
             clearTimeout(startupTimer);
             setIsScanning(true);
-            const code = hits.map((hit) => normalizeBarcode(hit.rawValue)).find(Boolean);
-            if (code) {
-              stop();
-              playBeep();
-              navigator.vibrate?.(80);
-              optionsRef.current.onScan(code);
-              return;
+            const validHits = hits.filter((h) => h.rawValue && h.rawValue.trim());
+            if (validHits.length > 0) {
+              const centerX = video.videoWidth / 2;
+              const centerY = video.videoHeight / 2;
+
+              // Ưu tiên mã vạch nằm ở gần tâm khung ngắm nhất khi có nhiều mã vạch cùng lúc
+              validHits.sort((a, b) => {
+                const boxA = a.boundingBox;
+                const boxB = b.boundingBox;
+                if (!boxA || !boxB) return 0;
+                const distA = Math.hypot(boxA.x + boxA.width / 2 - centerX, boxA.y + boxA.height / 2 - centerY);
+                const distB = Math.hypot(boxB.x + boxB.width / 2 - centerX, boxB.y + boxB.height / 2 - centerY);
+                return distA - distB;
+              });
+
+              const code = normalizeBarcode(validHits[0].rawValue);
+              if (code) {
+                stop();
+                playBeep();
+                navigator.vibrate?.(80);
+                optionsRef.current.onScan(code);
+                return;
+              }
             }
           } catch {
             // A transient frame error can be retried; startup remains bounded.
