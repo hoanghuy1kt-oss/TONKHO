@@ -34,6 +34,43 @@ function playBeep() {
   }
 }
 
+/**
+ * Mở luồng camera với các cấp độ fallback để đảm bảo luôn mở được trên mọi thiết bị
+ */
+async function requestCameraStream(): Promise<MediaStream> {
+  // Cấp 1: Camera sau với độ phân giải tiêu chuẩn
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+  } catch (err1) {
+    console.warn('Fallback 1: Không mở được camera phân giải cao, thử cấu hình cơ bản:', err1);
+  }
+
+  // Cấp 2: Chỉ yêu cầu camera sau (không ép độ phân giải)
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment',
+      },
+      audio: false,
+    });
+  } catch (err2) {
+    console.warn('Fallback 2: Không mở được camera sau chuyên dụng, thử camera mặc định:', err2);
+  }
+
+  // Cấp 3: Mở bất kỳ camera nào có sẵn trên máy
+  return await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: false,
+  });
+}
+
 export function useBarcodeScanner({ onScan }: UseBarcodeScannerOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -78,45 +115,11 @@ export function useBarcodeScanner({ onScan }: UseBarcodeScannerOptions) {
         'qr_code',
       ];
 
-      // 1. Ưu tiên BarcodeDetector phần cứng gốc của trình duyệt (Chrome, Edge, Android) để nhận diện tức thì (<10ms)
-      let detector: any = null;
-      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-        try {
-          const NativeDetector = (window as any).BarcodeDetector;
-          const supported = await NativeDetector.getSupportedFormats();
-          const validFormats = targetFormats.filter((f) => supported.includes(f));
-          detector = new NativeDetector({
-            formats: validFormats.length > 0 ? validFormats : targetFormats,
-          });
-        } catch {
-          detector = null;
-        }
-      }
-
-      // 2. Nếu không có native (Safari/Firefox), dùng ponyfill WebAssembly
-      if (!detector) {
-        const { BarcodeDetector } = await import('barcode-detector/ponyfill');
-        detector = new BarcodeDetector({
-          formats: targetFormats as any,
-        });
-      }
-
-      // 3. Khởi tạo Camera với độ phân giải tối ưu và lấy nét tự động liên tục (continuous autofocus)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          // @ts-ignore
-          focusMode: { ideal: 'continuous' },
-        },
-        audio: false,
-      });
-
+      // 1. Khởi tạo Camera trước để người dùng thấy video ngay lập tức
+      const stream = await requestCameraStream();
       streamRef.current = stream;
       const track = stream.getVideoTracks()[0];
 
-      // Thử kích hoạt lấy nét liên tục và kiểm tra đèn pin
       if (track) {
         const capabilities: any = track.getCapabilities ? track.getCapabilities() : {};
         if (capabilities.torch) {
@@ -128,34 +131,87 @@ export function useBarcodeScanner({ onScan }: UseBarcodeScannerOptions) {
               advanced: [{ focusMode: 'continuous' }],
             });
           } catch {
-            // Không hỗ trợ focusMode thì bỏ qua
+            // Thiết bị không hỗ trợ continuous focus thì bỏ qua
           }
         }
       }
 
       const video = videoRef.current;
-      if (!video) return;
+      if (!video) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
+      // Đặt các thuộc tính bắt buộc cho trình duyệt di động (Samsung Internet, Chrome Android, iOS Safari)
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('webkit-playsinline', 'true');
       video.srcObject = stream;
+
+      // Đợi video sẵn sàng metadata trước khi play()
+      await new Promise<void>((resolve) => {
+        if (video.readyState >= 1) {
+          resolve();
+        } else {
+          const onLoaded = () => {
+            video.removeEventListener('loadedmetadata', onLoaded);
+            resolve();
+          };
+          video.addEventListener('loadedmetadata', onLoaded);
+          setTimeout(resolve, 800);
+        }
+      });
+
       try {
         await video.play();
       } catch (err: any) {
         if (err.name !== 'AbortError') {
-          throw err;
+          console.warn('Lỗi khi phát video:', err);
         }
       }
+
       setIsScanning(true);
+
+      // 2. Khởi tạo bộ nhận diện Barcode (Ưu tiên Native BarcodeDetector, fallback sang WebAssembly Ponyfill)
+      let detector: any = null;
+      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+        try {
+          const NativeDetector = (window as any).BarcodeDetector;
+          const supported = await NativeDetector.getSupportedFormats();
+          const validFormats = targetFormats.filter((f) => supported.includes(f));
+          if (validFormats.length > 0) {
+            detector = new NativeDetector({ formats: validFormats });
+          }
+        } catch {
+          detector = null;
+        }
+      }
+
+      if (!detector) {
+        const { BarcodeDetector } = await import('barcode-detector/ponyfill');
+        detector = new BarcodeDetector({
+          formats: targetFormats as any,
+        });
+      }
 
       let isDestroyed = false;
       let rafId = 0;
       let inFlight = false;
 
-      // 4. Vòng lặp nhận diện cực nhanh dựa trên requestAnimationFrame (30 - 60 FPS)
+      // 3. Vòng lặp nhận diện cực nhanh dựa trên requestAnimationFrame (30 - 60 FPS)
       const scanLoop = async () => {
         if (isDestroyed) return;
 
         const currentVideo = videoRef.current;
-        if (currentVideo && currentVideo.readyState >= 2 && !inFlight) {
+        if (
+          currentVideo &&
+          currentVideo.readyState >= 2 &&
+          currentVideo.videoWidth > 0 &&
+          !inFlight &&
+          detector
+        ) {
           try {
             inFlight = true;
             const hits = await detector.detect(currentVideo);
@@ -198,7 +254,7 @@ export function useBarcodeScanner({ onScan }: UseBarcodeScannerOptions) {
     } catch (err: any) {
       console.error('Lỗi khởi động camera:', err);
       if (err.name === 'NotAllowedError') {
-        setError('Bạn đã từ chối quyền camera. Vui lòng cấp quyền trong cài đặt trình duyệt.');
+        setError('Bạn đã từ chối quyền camera. Vui lòng cấp quyền máy ảnh trong cài đặt trình duyệt.');
       } else if (err.name === 'NotFoundError') {
         setError('Không tìm thấy camera trên thiết bị của bạn.');
       } else {

@@ -30,9 +30,9 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/95 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black/50 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 bg-zinc-950/80 border-b border-zinc-800">
         <h2 className="text-base font-semibold">Quét mã vạch</h2>
         <div className="flex items-center gap-2">
           {hasTorch && (
@@ -59,13 +59,21 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
       </div>
 
       {/* Video Viewport & Scanning Aim Frame */}
-      <div className="relative flex-1 flex items-center justify-center overflow-hidden">
+      <div className="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
+        {/* Placeholder khi camera đang khởi động */}
+        {!isScanning && !error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-400 gap-3 z-0">
+            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-medium">Đang khởi động camera...</p>
+          </div>
+        )}
+
         <video
           ref={videoRef}
           playsInline
           muted
           autoPlay
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover z-0"
         />
 
         {/* Khung ngắm quét */}
@@ -91,8 +99,8 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
         )}
       </div>
 
-      {/* Footer 안내 */}
-      <div className="p-4 text-center text-xs text-zinc-400 bg-black/60">
+      {/* Footer hướng dẫn */}
+      <div className="p-4 text-center text-xs text-zinc-400 bg-zinc-950/80 border-t border-zinc-900">
         Hỗ trợ EAN-13, EAN-8, UPC-A, UPC-E, Code-128
       </div>
     </div>
