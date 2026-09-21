@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { InventoryEntry, InventoryHistory } from '@/types/inventory';
 import { exportInventoryToExcel } from '@/lib/excel-export';
 import { getPhotoUrl } from '@/lib/photo-url';
+import { getSpecIcon } from '@/lib/spec-utils';
 
 interface StockSummaryItem {
   barcode: string;
@@ -338,7 +339,7 @@ export default function AdminPage() {
                     )}
                     {item.weight && (
                       <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[11px] font-medium">
-                        ⚖️ {item.weight}
+                        {getSpecIcon(item.weight)} {item.weight}
                       </span>
                     )}
                     {item.flavor && (
@@ -387,7 +388,7 @@ export default function AdminPage() {
                       <th className="py-3 px-4">Mã vạch</th>
                       <th className="py-3 px-4">Tên sản phẩm</th>
                       <th className="py-3 px-3 text-center">ĐVT</th>
-                      <th className="py-3 px-3 text-center">Trọng lượng</th>
+                      <th className="py-3 px-3 text-center">Quy cách / Trọng lượng</th>
                       <th className="py-3 px-3">Hương vị / Mùi</th>
                       <th className="py-3 px-4 text-center">Số lô</th>
                       <th className="py-3 px-4 text-right">Tổng số lượng</th>
@@ -506,7 +507,7 @@ export default function AdminPage() {
                       )}
                       {row.weight && (
                         <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-medium">
-                          ⚖️ {row.weight}
+                          {getSpecIcon(row.weight)} {row.weight}
                         </span>
                       )}
                       {row.flavor && (
@@ -600,7 +601,7 @@ export default function AdminPage() {
                               <span>{row.barcode}</span>
                               {row.weight && (
                                 <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded text-[10px] font-medium font-sans">
-                                  ⚖️ {row.weight}
+                                  {getSpecIcon(row.weight)} {row.weight}
                                 </span>
                               )}
                               {row.flavor && (
@@ -797,7 +798,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                    <span className="text-[10px] sm:text-[11px] text-zinc-400">Trọng lượng</span>
+                    <span className="text-[10px] sm:text-[11px] text-zinc-400">Quy cách / Trọng lượng</span>
                     <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
                       {productSummary.weight || 'Chưa đặt'}
                     </div>

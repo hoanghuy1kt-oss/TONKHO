@@ -4,34 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { InventoryEntry, EntryDraft } from '@/types/inventory';
 import { uploadPhotoToFirebase } from '@/lib/image-compression';
 import { getPhotoUrl } from '@/lib/photo-url';
+import {
+  UNIT_OPTIONS,
+  getAdaptiveConfigForUnit,
+  parseWeightOrSpec,
+  formatSpecDisplay,
+} from '@/lib/spec-utils';
 
-export const UNIT_OPTIONS = [
-  'Cái',
-  'Hộp',
-  'Thùng',
-  'Chai',
-  'Lon',
-  'Gói',
-  'Túi',
-  'Bịch',
-  'Vỉ',
-  'Lốc',
-  'Cây',
-  'Cuộn',
-  'Khác',
-];
-
-function parseWeight(w?: string | null): { value: string; unit: 'g' | 'kg' } {
-  if (!w) return { value: '', unit: 'g' };
-  const trimmed = w.trim();
-  if (trimmed.toLowerCase().endsWith('kg')) {
-    return { value: trimmed.replace(/kg$/i, '').trim(), unit: 'kg' };
-  }
-  if (trimmed.toLowerCase().endsWith('g')) {
-    return { value: trimmed.replace(/g$/i, '').trim(), unit: 'g' };
-  }
-  return { value: trimmed, unit: 'g' };
-}
+export { UNIT_OPTIONS };
 
 interface EntryModalProps {
   isOpen: boolean;
@@ -64,7 +44,8 @@ export function EntryModal({
   const [unit, setUnit] = useState<string>('Hộp');
   const [customUnit, setCustomUnit] = useState<string>('');
   const [weightValue, setWeightValue] = useState<string>('');
-  const [weightUnit, setWeightUnit] = useState<'g' | 'kg'>('g');
+  const [weightUnit, setWeightUnit] = useState<string>('cái');
+  const [customWeightUnit, setCustomWeightUnit] = useState<string>('');
   const [flavor, setFlavor] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(existingBatch?.quantity || 1);
   const [expiryDate, setExpiryDate] = useState<string>(
@@ -81,6 +62,18 @@ export function EntryModal({
   const [error, setError] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const effectiveUnit = (unit === 'Khác' ? customUnit : unit).trim();
+  const adaptiveConfig = getAdaptiveConfigForUnit(effectiveUnit || unit);
+
+  const handleUnitChange = (newUnit: string) => {
+    setUnit(newUnit);
+    const cfg = getAdaptiveConfigForUnit(newUnit === 'Khác' ? customUnit : newUnit);
+    if (!weightValue || !cfg.subUnits.includes(weightUnit)) {
+      setWeightUnit(cfg.defaultSubUnit);
+      setCustomWeightUnit('');
+    }
+  };
 
   useEffect(() => {
     setCurrentBarcode(barcode);
@@ -102,9 +95,11 @@ export function EntryModal({
         setCustomUnit(existingUnit);
       }
 
-      const pw = parseWeight(existingBatch.weight);
+      const cfg = getAdaptiveConfigForUnit(existingUnit);
+      const pw = parseWeightOrSpec(existingBatch.weight, cfg.defaultSubUnit);
       setWeightValue(pw.value);
       setWeightUnit(pw.unit);
+      setCustomWeightUnit(pw.customUnit || '');
       setFlavor(existingBatch.flavor || '');
     } else {
       setQuantity(1);
@@ -126,9 +121,17 @@ export function EntryModal({
         setCustomUnit('');
       }
 
-      const pw = parseWeight(productWeight);
-      setWeightValue(pw.value);
-      setWeightUnit(pw.unit);
+      const cfg = getAdaptiveConfigForUnit(defaultUnit);
+      if (productWeight) {
+        const pw = parseWeightOrSpec(productWeight, cfg.defaultSubUnit);
+        setWeightValue(pw.value);
+        setWeightUnit(pw.unit);
+        setCustomWeightUnit(pw.customUnit || '');
+      } else {
+        setWeightValue('');
+        setWeightUnit(cfg.defaultSubUnit);
+        setCustomWeightUnit('');
+      }
       setFlavor(productFlavor || '');
     }
     setError('');
@@ -168,10 +171,14 @@ export function EntryModal({
 
     const parsedWeightNum = parseFloat(weightValue);
     if (!weightValue.trim() || isNaN(parsedWeightNum) || parsedWeightNum <= 0) {
-      setError('Trọng lượng (g/kg) là bắt buộc (phải lớn hơn 0)');
+      setError(`${adaptiveConfig.label.replace(' *', '')} là bắt buộc (phải lớn hơn 0)`);
       return;
     }
-    const effectiveWeight = `${weightValue.trim()}${weightUnit}`;
+    if (weightUnit === 'Khác' && !customWeightUnit.trim()) {
+      setError('Vui lòng nhập đơn vị quy cách con');
+      return;
+    }
+    const effectiveWeight = formatSpecDisplay(weightValue, weightUnit, customWeightUnit);
     const effectiveFlavor = flavor.trim() || null;
 
     if (!quantity || quantity <= 0) {
@@ -330,7 +337,7 @@ export function EntryModal({
                   <select
                     required
                     value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
+                    onChange={(e) => handleUnitChange(e.target.value)}
                     className="w-full h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                   >
                     {UNIT_OPTIONS.map((u) => (
@@ -352,30 +359,48 @@ export function EntryModal({
                 </div>
               </div>
 
-              {/* Trọng lượng */}
+              {/* Quy cách / Trọng lượng */}
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Trọng lượng *
+                <label
+                  className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 truncate"
+                  title={adaptiveConfig.label}
+                >
+                  {adaptiveConfig.label}
                 </label>
-                <div className="flex gap-1">
-                  <input
-                    type="number"
-                    step="any"
-                    min="0.001"
-                    required
-                    value={weightValue}
-                    onChange={(e) => setWeightValue(e.target.value)}
-                    placeholder="VD: 500"
-                    className="flex-1 min-w-0 h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <select
-                    value={weightUnit}
-                    onChange={(e) => setWeightUnit(e.target.value as 'g' | 'kg')}
-                    className="w-16 h-11 px-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-center"
-                  >
-                    <option value="g">g</option>
-                    <option value="kg">kg</option>
-                  </select>
+                <div className="space-y-1">
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.001"
+                      required
+                      value={weightValue}
+                      onChange={(e) => setWeightValue(e.target.value)}
+                      placeholder={adaptiveConfig.placeholder}
+                      className="flex-1 min-w-0 h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <select
+                      value={weightUnit}
+                      onChange={(e) => setWeightUnit(e.target.value)}
+                      className="w-20 h-11 px-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-center"
+                    >
+                      {adaptiveConfig.subUnits.map((su) => (
+                        <option key={su} value={su}>
+                          {su}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {weightUnit === 'Khác' && (
+                    <input
+                      type="text"
+                      required
+                      value={customWeightUnit}
+                      onChange={(e) => setCustomWeightUnit(e.target.value)}
+                      placeholder="Gõ đơn vị..."
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs focus:ring-2 focus:ring-emerald-500"
+                    />
+                  )}
                 </div>
               </div>
             </div>

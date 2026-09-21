@@ -2,6 +2,7 @@
 
 import { InventoryEntry } from '@/types/inventory';
 import { getPhotoUrl } from '@/lib/photo-url';
+import { getSpecIcon } from '@/lib/spec-utils';
 
 interface BatchCardProps {
   batch: InventoryEntry;
@@ -67,7 +68,7 @@ export function BatchCard({ batch, onEdit, onDelete }: BatchCardProps) {
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             {batch.weight && (
               <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium">
-                ⚖️ {batch.weight}
+                {getSpecIcon(batch.weight)} {batch.weight}
               </span>
             )}
             {batch.flavor && (

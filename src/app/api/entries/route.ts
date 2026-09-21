@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!draft.weight || !draft.weight.trim()) {
-      return NextResponse.json({ error: 'Trọng lượng (g/kg) là bắt buộc' }, { status: 400 });
+      return NextResponse.json({ error: 'Quy cách / Trọng lượng là bắt buộc' }, { status: 400 });
     }
 
     if (!draft.photo_key) {
