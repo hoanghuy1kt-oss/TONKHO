@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { r2Client } from '@/lib/r2-client';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-
-const bucketName = process.env.R2_BUCKET || 'tonkho-photos';
+import { doc, getDoc } from 'firebase/firestore';
+import { getDb } from '@/lib/firebase';
 
 const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
   <defs>
@@ -23,44 +21,38 @@ const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height
 export async function GET(request: NextRequest) {
   try {
     const key = request.nextUrl.searchParams.get('key');
-    if (!key) {
+    if (!key || key.startsWith('sample/')) {
       return new NextResponse(FALLBACK_SVG, {
-        headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=3600',
+        },
       });
     }
 
-    // Nếu là ảnh mẫu (sample) hoặc chưa cấu hình R2 credentials -> trả về SVG placeholder
-    if (
-      key.startsWith('sample/') ||
-      !process.env.R2_ACCESS_KEY_ID ||
-      !process.env.R2_SECRET_ACCESS_KEY
-    ) {
+    const docRef = doc(getDb(), 'inventoryPhotos', key);
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists() || !snap.data()?.base64) {
       return new NextResponse(FALLBACK_SVG, {
-        headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=3600',
+        },
       });
     }
 
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-    });
+    const data = snap.data();
+    const buffer = Buffer.from(data.base64, 'base64');
 
-    const response = await r2Client.send(command);
-    if (!response.Body) {
-      return new NextResponse(FALLBACK_SVG, {
-        headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
-      });
-    }
-
-    const byteArray = await response.Body.transformToByteArray();
-    return new NextResponse(Buffer.from(byteArray), {
+    return new NextResponse(buffer, {
       headers: {
-        'Content-Type': response.ContentType || 'image/jpeg',
+        'Content-Type': data.contentType || 'image/jpeg',
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
-  } catch (error: any) {
-    console.error('Photo view fallback triggered:', error?.message || error);
+  } catch (error) {
+    console.error('Lỗi lấy ảnh từ Firebase:', error);
     return new NextResponse(FALLBACK_SVG, {
       headers: {
         'Content-Type': 'image/svg+xml',
@@ -69,4 +61,3 @@ export async function GET(request: NextRequest) {
     });
   }
 }
-

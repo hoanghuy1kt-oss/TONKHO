@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { InventoryEntry, EntryDraft } from '@/types/inventory';
-import { uploadPhotoToR2 } from '@/lib/image-compression';
+import { uploadPhotoToFirebase } from '@/lib/image-compression';
 import { getPhotoUrl } from '@/lib/photo-url';
 
 interface EntryModalProps {
@@ -105,7 +105,7 @@ export function EntryModal({
       // Nếu có file ảnh mới được chụp/chọn -> tải lên R2
       if (selectedFile) {
         setUploading(true);
-        currentPhotoKey = await uploadPhotoToR2(selectedFile, barcode, (percent) => {
+        currentPhotoKey = await uploadPhotoToFirebase(selectedFile, barcode, (percent) => {
           setUploadProgress(percent);
         });
         setUploading(false);
