@@ -214,7 +214,7 @@ export default function Home() {
               placeholder="Hoặc nhập mã vạch (EAN/UPC)..."
               value={barcodeInput}
               onChange={(e) => setBarcodeInput(e.target.value)}
-              className="flex-1 px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              className="flex-1 px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
             />
             <button
               type="submit"

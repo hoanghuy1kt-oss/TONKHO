@@ -264,272 +264,281 @@ export function EntryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl p-5 sm:p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 my-8">
-        <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              {isEditing ? 'Chỉnh sửa lô hàng' : 'Thêm lô mới'}
-            </span>
-            {isEditing ? (
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-                Mã: {barcode}
-              </h2>
-            ) : (
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-xs font-bold text-zinc-400">Mã:</span>
-                <input
-                  type="text"
-                  value={currentBarcode}
-                  onChange={(e) => setCurrentBarcode(e.target.value)}
-                  placeholder="Mã vạch..."
-                  required
-                  className="px-2 py-0.5 text-sm font-mono font-bold rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {/* Tên sản phẩm */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-              Tên sản phẩm *
-            </label>
-            <input
-              type="text"
-              required
-              readOnly={isEditing}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Sữa tắm Lifebuoy"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          {/* Đơn vị tính & Trọng lượng (2 cột) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Đơn vị tính (cho chọn) (bắt buộc) */}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-xs">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-[28px] sm:rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 max-h-[92dvh] sm:max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-200">
+        <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+          {/* Header */}
+          <div className="shrink-0 px-5 pt-4 pb-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Đơn vị tính *
-              </label>
-              <div className="space-y-1.5">
-                <select
-                  required
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                >
-                  {UNIT_OPTIONS.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
-                {unit === 'Khác' && (
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                {isEditing ? 'Chỉnh sửa lô hàng' : 'Thêm lô mới'}
+              </span>
+              {isEditing ? (
+                <h2 className="text-sm sm:text-base font-extrabold text-zinc-900 dark:text-zinc-100 font-mono">
+                  Mã: {barcode}
+                </h2>
+              ) : (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-xs font-bold text-zinc-400">Mã:</span>
                   <input
                     type="text"
+                    value={currentBarcode}
+                    onChange={(e) => setCurrentBarcode(e.target.value)}
+                    placeholder="Mã vạch..."
                     required
-                    value={customUnit}
-                    onChange={(e) => setCustomUnit(e.target.value)}
-                    placeholder="Gõ đơn vị tính..."
-                    className="w-full px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 text-xs focus:ring-2 focus:ring-emerald-500"
+                    className="px-2 py-0.5 text-sm font-mono font-bold rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+              title="Đóng"
+            >
+              ✕
+            </button>
+          </div>
 
-            {/* Trọng lượng (g/kg) (bắt buộc) */}
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-3.5 space-y-3">
+            {/* Tên sản phẩm */}
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Trọng lượng (g/kg) *
+                Tên sản phẩm *
               </label>
-              <div className="flex gap-1.5">
-                <input
-                  type="number"
-                  step="any"
-                  min="0.001"
-                  required
-                  value={weightValue}
-                  onChange={(e) => setWeightValue(e.target.value)}
-                  placeholder="VD: 500 hoặc 1.5"
-                  className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-                <select
-                  value={weightUnit}
-                  onChange={(e) => setWeightUnit(e.target.value as 'g' | 'kg')}
-                  className="w-20 px-2 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="g">g</option>
-                  <option value="kg">kg</option>
-                </select>
+              <input
+                type="text"
+                required
+                readOnly={isEditing}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="VD: Sữa tắm Lifebuoy"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Đơn vị tính & Trọng lượng (2 cột trên cả mobile) */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Đơn vị tính */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Đơn vị tính *
+                </label>
+                <div className="space-y-1">
+                  <select
+                    required
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    className="w-full h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                  {unit === 'Khác' && (
+                    <input
+                      type="text"
+                      required
+                      value={customUnit}
+                      onChange={(e) => setCustomUnit(e.target.value)}
+                      placeholder="Gõ ĐVT..."
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs focus:ring-2 focus:ring-emerald-500"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Trọng lượng */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Trọng lượng *
+                </label>
+                <div className="flex gap-1">
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.001"
+                    required
+                    value={weightValue}
+                    onChange={(e) => setWeightValue(e.target.value)}
+                    placeholder="VD: 500"
+                    className="flex-1 min-w-0 h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <select
+                    value={weightUnit}
+                    onChange={(e) => setWeightUnit(e.target.value as 'g' | 'kg')}
+                    className="w-16 h-11 px-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-center"
+                  >
+                    <option value="g">g</option>
+                    <option value="kg">kg</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Hương vị / mùi (tùy chọn) */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-              Hương vị / mùi (tùy chọn)
-            </label>
-            <input
-              type="text"
-              value={flavor}
-              onChange={(e) => setFlavor(e.target.value)}
-              placeholder="VD: Dâu, Vani, Tôm chua cay, Không mùi..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          {/* Hạn sử dụng */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-              Hạn sử dụng (EXP) *
-            </label>
-            <input
-              type="date"
-              required
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          {/* Số lượng */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-              Số lượng kiểm đếm *
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-12 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-lg font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center transition"
-              >
-                -
-              </button>
+            {/* Hương vị / mùi (tùy chọn) */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Hương vị / mùi (tùy chọn)
+              </label>
               <input
-                type="number"
-                min="1"
-                required
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="flex-1 text-center font-bold text-lg h-11 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                type="text"
+                value={flavor}
+                onChange={(e) => setFlavor(e.target.value)}
+                placeholder="VD: Dâu, Vani, Tôm chua cay..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
               />
-              <button
-                type="button"
-                onClick={() => setQuantity(quantity + 1)}
-                className="w-12 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-lg font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center transition"
-              >
-                +
-              </button>
             </div>
-          </div>
 
-          {/* Hình ảnh chụp thực tế */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-              Ảnh chụp lô hàng (bắt buộc) *
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-
-            {photoPreview ? (
-              <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 aspect-video flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photoPreview}
-                  alt="Ảnh kiểm kê"
-                  className="w-full h-full object-cover"
+            {/* Hạn sử dụng & Số lượng (2 cột trên cả mobile) */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Hạn sử dụng */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Hạn sử dụng (EXP) *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  className="w-full h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                 />
+              </div>
+
+              {/* Số lượng */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Số lượng *
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-11 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-lg font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 flex items-center justify-center transition shrink-0"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="flex-1 min-w-0 text-center font-bold text-base h-11 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-11 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-lg font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 flex items-center justify-center transition shrink-0"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Hình ảnh chụp thực tế */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Ảnh chụp thực tế (bắt buộc) *
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {photoPreview ? (
+                <div className="flex items-center gap-3 p-2.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                  <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold block">
+                      ✓ Đã có ảnh lô hàng
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 underline font-medium"
+                    >
+                      Chụp lại / Đổi ảnh khác
+                    </button>
+                  </div>
+                </div>
+              ) : (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-2 right-2 px-3 py-1.5 rounded-lg bg-black/70 hover:bg-black text-white text-xs font-medium backdrop-blur-xs flex items-center gap-1.5 transition"
+                  className="w-full py-3.5 px-4 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 active:scale-[0.99] bg-zinc-50 dark:bg-zinc-800/40 hover:bg-emerald-50/20 text-zinc-700 dark:text-zinc-300 flex items-center justify-center gap-2.5 transition"
                 >
-                  📷 Chụp lại
+                  <span className="text-xl">📷</span>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    Bấm chụp ảnh hoặc chọn từ máy
+                  </span>
                 </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-6 px-4 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-emerald-50/20 text-zinc-600 dark:text-zinc-400 flex flex-col items-center justify-center gap-2 transition"
-              >
-                <span className="text-2xl">📸</span>
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  Bấm để chụp ảnh hoặc chọn từ máy
-                </span>
-                <span className="text-[11px] text-zinc-400">
-                  Ảnh sẽ được tự động nén tối ưu trước khi lưu vào Firebase
-                </span>
-              </button>
-            )}
+              )}
 
-            {uploading && (
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between text-xs text-zinc-500">
-                  <span>Đang tải ảnh lên Firebase...</span>
-                  <span>{uploadProgress}%</span>
+              {uploading && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs text-zinc-500">
+                    <span>Đang tải ảnh lên Firebase...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              </div>
+              )}
+            </div>
+
+            {/* Ghi chú */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Ghi chú thêm (tùy chọn)
+              </label>
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="VD: Bao bì hơi trầy xước..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {error && (
+              <p role="alert" className="text-xs text-rose-500 bg-rose-50 dark:bg-rose-950/50 p-2.5 rounded-xl border border-rose-200 dark:border-rose-900 font-medium">
+                {error}
+              </p>
             )}
           </div>
 
-          {/* Ghi chú */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-              Ghi chú thêm (tùy chọn)
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Bao bì hơi trầy xước..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          {error && (
-            <p role="alert" className="text-xs text-rose-500 bg-rose-50 dark:bg-rose-950/50 p-3 rounded-xl border border-rose-200 dark:border-rose-900">
-              {error}
-            </p>
-          )}
-
-          <div className="flex gap-3 pt-2">
+          {/* Sticky Action Footer */}
+          <div className="shrink-0 px-5 py-3 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/90 dark:bg-zinc-900/90 backdrop-blur-xs flex gap-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               disabled={submitting}
               onClick={onClose}
-              className="flex-1 py-3 px-4 rounded-xl border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-xs text-zinc-700 dark:text-zinc-300 transition"
+              className="flex-1 py-3 px-4 rounded-xl border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold text-xs text-zinc-700 dark:text-zinc-300 transition"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={submitting || uploading}
-              className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] font-bold text-xs text-white shadow-sm disabled:opacity-50 transition"
+              className="flex-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] font-bold text-xs text-white shadow-sm disabled:opacity-50 transition"
             >
               {submitting ? 'Đang lưu...' : isEditing ? 'Lưu thay đổi' : 'Tạo lô kiểm kê'}
             </button>

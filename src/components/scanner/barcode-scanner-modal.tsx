@@ -39,7 +39,7 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
             <button
               onClick={toggleTorch}
               type="button"
-              className={`p-2 rounded-full border transition-colors ${
+              className={`w-11 h-11 flex items-center justify-center rounded-full border transition-colors text-base ${
                 isTorchOn ? 'bg-amber-400 border-amber-400 text-black' : 'border-zinc-700 bg-zinc-800 text-white'
               }`}
               title="Đèn flash"
@@ -50,7 +50,7 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
           <button
             onClick={onClose}
             type="button"
-            className="p-2 rounded-full border border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700"
+            className="w-11 h-11 flex items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700 text-base"
             title="Đóng"
           >
             ✕
@@ -104,7 +104,7 @@ export function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }: BarcodeS
       </div>
 
       {/* Footer hướng dẫn */}
-      <div className="p-4 text-center text-xs text-zinc-400 bg-zinc-950/80 border-t border-zinc-900">
+      <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-xs text-zinc-400 bg-zinc-950/80 border-t border-zinc-900">
         Hỗ trợ EAN-13, EAN-8, UPC-A, UPC-E, Code-128
       </div>
     </div>
