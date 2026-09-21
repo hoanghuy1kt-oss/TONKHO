@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useStaff } from '@/hooks/use-staff';
 import { useEntries } from '@/hooks/use-entries';
@@ -14,7 +14,7 @@ import { RecentFeed } from '@/components/inventory/recent-feed';
 
 export default function Home() {
   const { staffName, staffUid, hasStaffName, isLoaded, setStaffName } = useStaff();
-  const { entries, loading: feedLoading, lastSynced, refresh: refreshFeed } = useEntries(2500);
+  const { entries, loading: feedLoading, error: feedError, lastSynced, refresh: refreshFeed } = useEntries(2500);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -33,6 +33,7 @@ export default function Home() {
   const [batches, setBatches] = useState<InventoryEntry[]>([]);
   const [totalQuantity, setTotalQuantity] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const lookupVersion = useRef(0);
 
   // Lô được chọn để chỉnh sửa (null = thêm lô mới)
   const [selectedBatchForEdit, setSelectedBatchForEdit] = useState<InventoryEntry | null>(null);
@@ -60,13 +61,18 @@ export default function Home() {
     const normalized = normalizeBarcode(code);
     if (!normalized) return;
 
+    const version = ++lookupVersion.current;
     setActiveBarcode(normalized);
+    setProduct(null);
+    setBatches([]);
+    setTotalQuantity(0);
     setLookupLoading(true);
 
     try {
       const res = await fetch(`/api/products/${encodeURIComponent(normalized)}`);
       if (res.ok) {
         const data = await res.json();
+        if (version !== lookupVersion.current) return;
         setProduct(data.product);
         setBatches(data.batches || []);
         setTotalQuantity(data.totalQuantity || 0);
@@ -74,7 +80,7 @@ export default function Home() {
     } catch (err) {
       console.error('Lookup error:', err);
     } finally {
-      setLookupLoading(false);
+      if (version === lookupVersion.current) setLookupLoading(false);
     }
   }, []);
 
@@ -188,6 +194,7 @@ export default function Home() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-xl w-full mx-auto px-4 py-4 space-y-5">
+        {feedError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{feedError}</p>}
         {/* Scanner & Search Action Box */}
         <section className="bg-white dark:bg-zinc-900 rounded-3xl p-4 sm:p-5 shadow-xs border border-zinc-200 dark:border-zinc-800 space-y-3.5">
           {/* Nút to mở Camera Quét mã */}

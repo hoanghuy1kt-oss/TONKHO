@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { InventoryEntry, InventoryHistory } from '@/types/inventory';
 import { exportInventoryToExcel } from '@/lib/excel-export';
-import { getPhotoUrl } from '@/lib/r2-client';
+import { getPhotoUrl } from '@/lib/photo-url';
 
 interface StockSummaryItem {
   barcode: string;
@@ -40,7 +40,7 @@ export default function AdminPage() {
     try {
       const [sumRes, entRes] = await Promise.all([
         fetch('/api/admin/summary'),
-        fetch('/api/entries?limit=500'),
+        fetch('/api/entries?all=true'),
       ]);
 
       if (sumRes.ok) {

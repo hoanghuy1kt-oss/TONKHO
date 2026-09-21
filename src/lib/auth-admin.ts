@@ -1,17 +1,21 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const ADMIN_SECRET = new TextEncoder().encode(
-  process.env.ADMIN_JWT_SECRET || 'tonkho_admin_secret_key_default_32_characters_minimum'
-);
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'tonkho123';
+function getAdminSecret() {
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('ADMIN_JWT_SECRET phải được cấu hình với ít nhất 32 ký tự.');
+  }
+  return new TextEncoder().encode(secret);
+}
 export const ADMIN_COOKIE_NAME = 'tonkho_admin_token';
 
 /**
  * Xác thực mật khẩu quản trị viên
  */
 export function verifyAdminPassword(input: string): boolean {
-  return input === ADMIN_PASSWORD;
+  const password = process.env.ADMIN_PASSWORD;
+  return Boolean(password) && typeof input === 'string' && input === password;
 }
 
 /**
@@ -22,7 +26,7 @@ export async function signAdminToken(): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(ADMIN_SECRET);
+    .sign(getAdminSecret());
 }
 
 /**
@@ -30,7 +34,7 @@ export async function signAdminToken(): Promise<string> {
  */
 export async function verifyAdminToken(token: string): Promise<boolean> {
   try {
-    const { payload } = await jwtVerify(token, ADMIN_SECRET);
+    const { payload } = await jwtVerify(token, getAdminSecret(), { algorithms: ['HS256'] });
     return payload.role === 'admin';
   } catch {
     return false;

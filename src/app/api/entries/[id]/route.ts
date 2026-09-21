@@ -1,3 +1,4 @@
+import { ValidationError } from '@/lib/inventory-validation';
 import { NextRequest, NextResponse } from 'next/server';
 import { firebaseRepo } from '@/lib/firebase-repository';
 
@@ -26,7 +27,7 @@ export async function PATCH(
       id,
       rev,
       {
-        quantity: Number(updates.quantity),
+        quantity: updates.quantity,
         expiry_date: updates.expiry_date,
         photo_key: updates.photo_key,
         note: updates.note,
@@ -36,6 +37,9 @@ export async function PATCH(
 
     return NextResponse.json({ entry: updated });
   } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error updating entry:', error);
     const isConflict = error.message && error.message.includes('Xung đột');
     return NextResponse.json(
@@ -51,24 +55,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    let rev: number | undefined = undefined;
-    let staff = { name: 'Admin', uid: 'admin' };
-
-    try {
-      const body = await request.json();
-      if (body?.rev !== undefined && typeof body.rev === 'number') {
-        rev = body.rev;
-      }
-      if (body?.staff?.name && body?.staff?.uid) {
-        staff = body.staff;
-      }
-    } catch {
-      // Body may be empty or not json, which is permitted
-    }
+    const { rev, staff } = await request.json();
 
     await firebaseRepo.deleteEntry(id, rev, staff);
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error deleting entry:', error);
     const isConflict = error.message && error.message.includes('Xung đột');
     return NextResponse.json(

@@ -1,7 +1,11 @@
+import { checkIsAdmin } from '@/lib/auth-admin';
 import { NextResponse } from 'next/server';
 import { firebaseRepo } from '@/lib/firebase-repository';
 
 export async function POST() {
+  if (!(await checkIsAdmin())) {
+    return NextResponse.json({ error: 'Cần đăng nhập quản trị viên' }, { status: 401 });
+  }
   try {
     const sampleProducts = [
       {

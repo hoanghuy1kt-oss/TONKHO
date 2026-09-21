@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { InventoryEntry, EntryDraft } from '@/types/inventory';
 import { uploadPhotoToR2 } from '@/lib/image-compression';
-import { getPhotoUrl } from '@/lib/r2-client';
+import { getPhotoUrl } from '@/lib/photo-url';
 
 interface EntryModalProps {
   isOpen: boolean;
@@ -44,6 +44,7 @@ export function EntryModal({
 
   useEffect(() => {
     setName(productName);
+    setSelectedFile(null);
     if (existingBatch) {
       setQuantity(existingBatch.quantity);
       setExpiryDate(existingBatch.expiry_date);
@@ -195,6 +196,7 @@ export function EntryModal({
             <input
               type="text"
               required
+              readOnly={isEditing}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="VD: Sữa tắm Lifebuoy 850g"

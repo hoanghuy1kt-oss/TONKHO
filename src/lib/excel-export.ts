@@ -1,6 +1,6 @@
 import writeXlsxFile from 'write-excel-file/browser';
 import { InventoryEntry } from '@/types/inventory';
-import { getPhotoUrl } from './r2-client';
+import { getPhotoUrl } from './photo-url';
 
 /**
  * Xuất danh sách kiểm kê ra file Excel (.xlsx) chuẩn tiếng Việt

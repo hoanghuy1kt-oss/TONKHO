@@ -1,7 +1,7 @@
 'use client';
 
 import { InventoryEntry } from '@/types/inventory';
-import { getPhotoUrl } from '@/lib/r2-client';
+import { getPhotoUrl } from '@/lib/photo-url';
 
 interface RecentFeedProps {
   entries: InventoryEntry[];

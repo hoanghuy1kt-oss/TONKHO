@@ -1,3 +1,5 @@
+import { checkIsAdmin } from '@/lib/auth-admin';
+import { ValidationError } from '@/lib/inventory-validation';
 import { NextRequest, NextResponse } from 'next/server';
 import { firebaseRepo } from '@/lib/firebase-repository';
 import { EntryDraft } from '@/types/inventory';
@@ -6,11 +8,23 @@ import { normalizeBarcode } from '@/lib/barcode-utils';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '100', 10);
+    if (searchParams.get('all') === 'true') {
+      if (!(await checkIsAdmin())) {
+        return NextResponse.json({ error: 'Cần đăng nhập quản trị viên' }, { status: 401 });
+      }
+      return NextResponse.json({ entries: await firebaseRepo.listRecentEntries(null) });
+    }
+    const limit = Number(searchParams.get('limit') || '100');
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 2500) {
+      return NextResponse.json({ error: 'limit phải từ 1 đến 2500' }, { status: 400 });
+    }
 
     const entries = await firebaseRepo.listRecentEntries(limit);
     return NextResponse.json({ entries });
   } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error fetching entries:', error);
     return NextResponse.json({ error: error.message || 'Lỗi tải danh sách kiểm kê' }, { status: 500 });
   }
@@ -36,12 +50,15 @@ export async function POST(request: NextRequest) {
     const normalizedDraft = {
       ...draft,
       barcode: normalizeBarcode(draft.barcode),
-      quantity: Number(draft.quantity),
+      quantity: draft.quantity,
     };
 
     const created = await firebaseRepo.createEntry(normalizedDraft, staff);
     return NextResponse.json({ entry: created });
   } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error creating entry:', error);
     return NextResponse.json({ error: error.message || 'Lỗi tạo lô kiểm kê' }, { status: 500 });
   }

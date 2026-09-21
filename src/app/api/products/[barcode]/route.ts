@@ -1,3 +1,4 @@
+import { checkIsAdmin } from '@/lib/auth-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { firebaseRepo } from '@/lib/firebase-repository';
 import { normalizeBarcode } from '@/lib/barcode-utils';
@@ -43,6 +44,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ barcode: string }> }
 ) {
+  if (!(await checkIsAdmin())) {
+    return NextResponse.json({ error: 'Cần đăng nhập quản trị viên' }, { status: 401 });
+  }
   try {
     const { barcode } = await params;
     const normalized = normalizeBarcode(barcode);
