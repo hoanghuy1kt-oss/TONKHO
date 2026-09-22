@@ -7,6 +7,8 @@ import { getPhotoUrl } from '@/lib/photo-url';
 import {
   UNIT_OPTIONS,
   getAdaptiveConfigForUnit,
+  getSpecFieldLabel,
+  getSpecPlaceholder,
   parseWeightOrSpec,
   formatSpecDisplay,
 } from '@/lib/spec-utils';
@@ -70,6 +72,9 @@ export function EntryModal({
 
   const effectiveUnit = (unit === 'Khác' ? customUnit : unit).trim();
   const adaptiveConfig = getAdaptiveConfigForUnit(effectiveUnit || unit);
+  const effectiveWeightUnit = weightUnit === 'Khác' ? customWeightUnit : weightUnit;
+  const currentFieldLabel = getSpecFieldLabel(effectiveWeightUnit, effectiveUnit || unit);
+  const currentPlaceholder = getSpecPlaceholder(effectiveWeightUnit, effectiveUnit || unit);
 
   const handleUnitChange = (newUnit: string) => {
     setUnit(newUnit);
@@ -107,7 +112,7 @@ export function EntryModal({
       }
 
       const cfg = getAdaptiveConfigForUnit(existingUnit);
-      const pw = parseWeightOrSpec(existingBatch.weight, cfg.defaultSubUnit);
+      const pw = parseWeightOrSpec(existingBatch.weight, cfg.defaultSubUnit, existingUnit);
       setWeightValue(pw.value);
       setWeightUnit(pw.unit);
       setCustomWeightUnit(pw.customUnit || '');
@@ -135,7 +140,7 @@ export function EntryModal({
 
       const cfg = getAdaptiveConfigForUnit(defaultUnit);
       if (productWeight) {
-        const pw = parseWeightOrSpec(productWeight, cfg.defaultSubUnit);
+        const pw = parseWeightOrSpec(productWeight, cfg.defaultSubUnit, defaultUnit);
         setWeightValue(pw.value);
         setWeightUnit(pw.unit);
         setCustomWeightUnit(pw.customUnit || '');
@@ -376,9 +381,9 @@ export function EntryModal({
               <div>
                 <label
                   className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 truncate"
-                  title={adaptiveConfig.label}
+                  title={currentFieldLabel}
                 >
-                  {adaptiveConfig.label}
+                  {currentFieldLabel}
                 </label>
                 <div className="space-y-1">
                   <div className="flex gap-1">
@@ -389,7 +394,7 @@ export function EntryModal({
                       required
                       value={weightValue}
                       onChange={(e) => setWeightValue(e.target.value)}
-                      placeholder={adaptiveConfig.placeholder}
+                      placeholder={currentPlaceholder}
                       className="flex-1 min-w-0 h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     />
                     <select
@@ -414,27 +419,45 @@ export function EntryModal({
                       className="w-full px-2.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs focus:ring-2 focus:ring-emerald-500"
                     />
                   )}
-                  {/* Nút bấm điền nhanh cho hàng lẻ / đồ chơi */}
+                  {/* Nút bấm điền nhanh linh hoạt theo ĐVT */}
                   <div className="flex items-center gap-1 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setWeightValue('1');
-                        const defaultSub =
-                          effectiveUnit === 'Bộ'
-                            ? 'bộ'
-                            : effectiveUnit === 'Hộp'
-                            ? 'cái'
-                            : effectiveUnit === 'Thùng'
-                            ? 'cái'
-                            : 'cái';
-                        setWeightUnit(defaultSub);
-                        setCustomWeightUnit('');
-                      }}
-                      className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
-                    >
-                      ⚡ Điền nhanh: 1 {effectiveUnit === 'Bộ' ? 'bộ' : (effectiveUnit === 'Hộp' ? 'cái' : (effectiveUnit === 'Thùng' ? 'cái' : 'cái'))}
-                    </button>
+                    {effectiveUnit === 'Bộ' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeightValue('1');
+                          setWeightUnit('bộ');
+                          setCustomWeightUnit('');
+                        }}
+                        className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                      >
+                        ⚡ Điền nhanh: 1 bộ
+                      </button>
+                    ) : ['Cái', 'Gói', 'Bịch', 'Túi'].includes(effectiveUnit) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeightValue('1');
+                          setWeightUnit('cái');
+                          setCustomWeightUnit('');
+                        }}
+                        className="text-[10px] text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 font-medium hover:underline"
+                      >
+                        ⚡ Hàng chiếc/đồ chơi (1 cái)
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeightValue(effectiveUnit === 'Thùng' ? '24' : '1');
+                          setWeightUnit('cái');
+                          setCustomWeightUnit('');
+                        }}
+                        className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                      >
+                        ⚡ Điền nhanh: {effectiveUnit === 'Thùng' ? '24 cái' : '1 cái'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

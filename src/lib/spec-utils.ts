@@ -26,44 +26,97 @@ export interface UnitAdaptiveConfig {
  * Cấu hình tự động theo Đơn vị tính (ĐVT)
  */
 export function getAdaptiveConfigForUnit(unitName: string): UnitAdaptiveConfig {
-  const bulkUnits = ['Thùng', 'Hộp', 'Lốc', 'Vỉ', 'Cây'];
+  const bulkUnits = ['Thùng', 'Hộp', 'Lốc', 'Vỉ', 'Cây', 'Cuộn'];
   const liquidUnits = ['Chai', 'Lon', 'Hũ', 'Ly'];
-  const itemUnits = ['Cái', 'Bộ', 'Gói', 'Bịch', 'Túi'];
+  const itemUnits = ['Cái', 'Gói', 'Bịch', 'Túi'];
 
   if (bulkUnits.includes(unitName)) {
     return {
-      label: 'Quy cách con *',
+      label: 'Quy cách đóng gói *',
       placeholder: 'VD: 24 (hoặc 1)',
       defaultSubUnit: 'cái',
-      subUnits: ['cái', 'bộ', 'gói', 'lon', 'chai', 'vỉ', 'hộp', 'kg', 'g', 'Khác'],
+      subUnits: ['cái', 'gói', 'lon', 'chai', 'hộp', 'vỉ', 'bộ', 'kg', 'g', 'Khác'],
     };
   }
 
   if (liquidUnits.includes(unitName)) {
     return {
-      label: 'Thể tích / Khối lượng *',
+      label: 'Thể tích / Dung tích *',
       placeholder: 'VD: 330',
       defaultSubUnit: 'ml',
       subUnits: ['ml', 'l', 'g', 'kg', 'cái', 'Khác'],
     };
   }
 
-  if (itemUnits.includes(unitName)) {
-    const defaultSub = unitName === 'Bộ' ? 'bộ' : (unitName === 'Cái' ? 'cái' : 'g');
+  if (unitName === 'Bộ') {
     return {
-      label: 'Quy cách / Trọng lượng *',
-      placeholder: 'VD: 1 hoặc 500',
-      defaultSubUnit: defaultSub,
-      subUnits: ['cái', 'bộ', 'g', 'kg', 'ml', 'l', 'viên', 'miếng', 'Khác'],
+      label: 'Số chi tiết / món *',
+      placeholder: 'VD: 1 hoặc 6',
+      defaultSubUnit: 'bộ',
+      subUnits: ['bộ', 'cái', 'món', 'chi tiết', 'g', 'kg', 'Khác'],
+    };
+  }
+
+  if (itemUnits.includes(unitName)) {
+    // Với ĐVT Cái, Gói, Bịch, Túi: người dùng yêu cầu Cái tính theo g hoặc kg (bánh kẹo, thực phẩm...)
+    return {
+      label: 'Trọng lượng *',
+      placeholder: 'VD: 29.5 hoặc 500',
+      defaultSubUnit: 'g',
+      subUnits: ['g', 'kg', 'cái', 'bộ', 'ml', 'l', 'viên', 'miếng', 'Khác'],
     };
   }
 
   return {
-    label: 'Quy cách / Định lượng *',
-    placeholder: 'VD: 100',
-    defaultSubUnit: 'cái',
-    subUnits: ['cái', 'bộ', 'g', 'kg', 'm', 'ml', 'Khác'],
+    label: 'Trọng lượng / Quy cách *',
+    placeholder: 'VD: 500',
+    defaultSubUnit: 'g',
+    subUnits: ['g', 'kg', 'cái', 'bộ', 'ml', 'l', 'Khác'],
   };
+}
+
+/**
+ * Lấy nhãn hiển thị động theo đơn vị con được chọn để tránh tình trạng "Trọng lượng: 29.5 cái"
+ */
+export function getSpecFieldLabel(subUnit: string, parentUnit?: string): string {
+  const s = (subUnit || '').toLowerCase().trim();
+  if (['g', 'kg'].includes(s)) {
+    return 'Trọng lượng *';
+  }
+  if (['ml', 'l', 'lít', 'lit'].includes(s)) {
+    return 'Thể tích / Dung tích *';
+  }
+  if (
+    ['cái', 'bộ', 'gói', 'lon', 'chai', 'vỉ', 'hộp', 'viên', 'miếng', 'cuộn', 'tờ', 'món', 'chi tiết'].includes(s)
+  ) {
+    const parent = (parentUnit || '').toLowerCase().trim();
+    if (['thùng', 'hộp', 'lốc', 'vỉ', 'cây', 'cuộn'].includes(parent)) {
+      return 'Quy cách đóng gói *';
+    }
+    if (parent === 'bộ') {
+      return 'Số chi tiết / món *';
+    }
+    return 'Quy cách con *';
+  }
+  return 'Quy cách / Trọng lượng *';
+}
+
+/**
+ * Gợi ý placeholder phù hợp
+ */
+export function getSpecPlaceholder(subUnit: string, parentUnit?: string): string {
+  const s = (subUnit || '').toLowerCase().trim();
+  if (['g', 'kg'].includes(s)) return 'VD: 29.5 hoặc 500';
+  if (['ml', 'l', 'lít', 'lit'].includes(s)) return 'VD: 330 hoặc 500';
+  if (['cái', 'gói', 'lon', 'chai', 'hộp', 'vỉ'].includes(s)) {
+    const parent = (parentUnit || '').toLowerCase().trim();
+    if (['thùng', 'hộp', 'lốc', 'vỉ', 'cây'].includes(parent)) {
+      return 'VD: 24 (hoặc 1)';
+    }
+    return 'VD: 1 (hoặc 10)';
+  }
+  if (s === 'bộ') return 'VD: 1 hoặc 6';
+  return 'VD: 100';
 }
 
 const KNOWN_SUB_UNITS = [
@@ -78,6 +131,8 @@ const KNOWN_SUB_UNITS = [
   'miếng',
   'cuộn',
   'tờ',
+  'món',
+  'chi tiết',
   'kg',
   'ml',
   'lít',
@@ -89,10 +144,12 @@ const KNOWN_SUB_UNITS = [
 
 /**
  * Tách giá trị số và đơn vị con từ chuỗi đã lưu (VD: "500g", "1.5kg", "24 cái", "330ml")
+ * Tự động chuyển đổi nếu dính trường hợp lỗi "29.5 cái" -> "29.5 g"
  */
 export function parseWeightOrSpec(
   raw?: string | null,
-  fallbackUnit = 'cái'
+  fallbackUnit = 'g',
+  parentUnit?: string
 ): { value: string; unit: string; customUnit: string } {
   if (!raw) return { value: '', unit: fallbackUnit, customUnit: '' };
   const trimmed = raw.trim();
@@ -106,6 +163,15 @@ export function parseWeightOrSpec(
         (u) => u.toLowerCase() === unitPart.toLowerCase()
       );
       if (found) {
+        // Tự động sửa trường hợp lỗi gán nhầm số lẻ thập phân cho "cái"
+        // (Ví dụ Kẹo Colia: "29.5 cái" -> chuẩn hoá thành "29.5 g")
+        if (
+          found === 'cái' &&
+          (numPart.includes('.') || numPart.includes(',')) &&
+          (!parentUnit || ['Cái', 'Gói', 'Bịch', 'Túi'].includes(parentUnit))
+        ) {
+          return { value: numPart, unit: 'g', customUnit: '' };
+        }
         return { value: numPart, unit: found, customUnit: '' };
       }
       return { value: numPart, unit: 'Khác', customUnit: unitPart };
