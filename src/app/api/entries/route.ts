@@ -43,10 +43,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Đơn vị tính là bắt buộc' }, { status: 400 });
     }
 
-    if (!draft.weight || !draft.weight.trim()) {
-      return NextResponse.json({ error: 'Quy cách / Trọng lượng là bắt buộc' }, { status: 400 });
-    }
-
     if (!draft.photo_key) {
       return NextResponse.json({ error: 'Hình ảnh kiểm kê là bắt buộc' }, { status: 400 });
     }
@@ -58,6 +54,9 @@ export async function POST(request: NextRequest) {
     const normalizedDraft = {
       ...draft,
       barcode: normalizeBarcode(draft.barcode),
+      unit: draft.unit.trim(),
+      weight: draft.weight?.trim() || null,
+      flavor: draft.flavor?.trim() || null,
       quantity: draft.quantity,
     };
 

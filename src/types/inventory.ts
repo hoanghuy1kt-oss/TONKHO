@@ -52,12 +52,12 @@ export interface EntryDraft {
   id?: string;
   barcode: string;
   product_name: string;
-  unit?: string;
-  weight?: string;
-  flavor?: string;
+  unit?: string | null;
+  weight?: string | null;
+  flavor?: string | null;
   expiry_date: string;
   quantity: number;
-  note?: string;
+  note?: string | null;
   photo_key: string;
   rev?: number;
 }

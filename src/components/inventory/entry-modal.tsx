@@ -49,6 +49,7 @@ export function EntryModal({
   const [weightUnit, setWeightUnit] = useState<string>('cái');
   const [customWeightUnit, setCustomWeightUnit] = useState<string>('');
   const [flavor, setFlavor] = useState<string>('');
+  const [noSpec, setNoSpec] = useState<boolean>(false);
   const [quantity, setQuantity] = useState<number>(existingBatch?.quantity || 1);
   const [noExpiry, setNoExpiry] = useState<boolean>(
     existingBatch?.expiry_date === 'Không có HSD'
@@ -111,11 +112,20 @@ export function EntryModal({
         setCustomUnit(existingUnit);
       }
 
+      const hasSpec = !!(existingBatch.weight && existingBatch.weight.trim());
+      setNoSpec(!hasSpec);
+
       const cfg = getAdaptiveConfigForUnit(existingUnit);
-      const pw = parseWeightOrSpec(existingBatch.weight, cfg.defaultSubUnit, existingUnit);
-      setWeightValue(pw.value);
-      setWeightUnit(pw.unit);
-      setCustomWeightUnit(pw.customUnit || '');
+      if (hasSpec) {
+        const pw = parseWeightOrSpec(existingBatch.weight, cfg.defaultSubUnit, existingUnit);
+        setWeightValue(pw.value);
+        setWeightUnit(pw.unit);
+        setCustomWeightUnit(pw.customUnit || '');
+      } else {
+        setWeightValue('');
+        setWeightUnit(cfg.defaultSubUnit);
+        setCustomWeightUnit('');
+      }
       setFlavor(existingBatch.flavor || '');
     } else {
       setQuantity(1);
@@ -138,8 +148,11 @@ export function EntryModal({
         setCustomUnit('');
       }
 
+      const hasProductWeight = !!(productWeight && productWeight.trim());
+      setNoSpec(false);
+
       const cfg = getAdaptiveConfigForUnit(defaultUnit);
-      if (productWeight) {
+      if (hasProductWeight) {
         const pw = parseWeightOrSpec(productWeight, cfg.defaultSubUnit, defaultUnit);
         setWeightValue(pw.value);
         setWeightUnit(pw.unit);
@@ -186,16 +199,19 @@ export function EntryModal({
       return;
     }
 
-    const parsedWeightNum = parseFloat(weightValue);
-    if (!weightValue.trim() || isNaN(parsedWeightNum) || parsedWeightNum <= 0) {
-      setError(`${adaptiveConfig.label.replace(' *', '')} là bắt buộc (phải lớn hơn 0)`);
-      return;
+    let effectiveWeight: string | null = null;
+    if (!noSpec && weightValue.trim()) {
+      const parsedWeightNum = parseFloat(weightValue);
+      if (isNaN(parsedWeightNum) || parsedWeightNum <= 0) {
+        setError(`${currentFieldLabel.replace(' *', '')} phải là số lớn hơn 0`);
+        return;
+      }
+      if (weightUnit === 'Khác' && !customWeightUnit.trim()) {
+        setError('Vui lòng nhập đơn vị quy cách con');
+        return;
+      }
+      effectiveWeight = formatSpecDisplay(weightValue, weightUnit, customWeightUnit);
     }
-    if (weightUnit === 'Khác' && !customWeightUnit.trim()) {
-      setError('Vui lòng nhập đơn vị quy cách con');
-      return;
-    }
-    const effectiveWeight = formatSpecDisplay(weightValue, weightUnit, customWeightUnit);
     const effectiveFlavor = flavor.trim() || null;
 
     if (!quantity || quantity <= 0) {
@@ -379,87 +395,96 @@ export function EntryModal({
 
               {/* Quy cách / Trọng lượng */}
               <div>
-                <label
-                  className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 truncate"
-                  title={currentFieldLabel}
-                >
-                  {currentFieldLabel}
-                </label>
-                <div className="space-y-1">
-                  <div className="flex gap-1">
+                <div className="flex items-center justify-between mb-1">
+                  <label
+                    className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate"
+                    title={currentFieldLabel}
+                  >
+                    {noSpec ? 'Quy cách con' : currentFieldLabel.replace(' *', '')}
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer select-none">
                     <input
-                      type="number"
-                      step="any"
-                      min="0.001"
-                      required
-                      value={weightValue}
-                      onChange={(e) => setWeightValue(e.target.value)}
-                      placeholder={currentPlaceholder}
-                      className="flex-1 min-w-0 h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                      type="checkbox"
+                      checked={noSpec}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setNoSpec(checked);
+                        if (checked) {
+                          setWeightValue('');
+                        }
+                      }}
+                      className="w-3.5 h-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                     />
-                    <select
-                      value={weightUnit}
-                      onChange={(e) => setWeightUnit(e.target.value)}
-                      className="w-20 h-11 px-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-center"
+                    <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                      Không có
+                    </span>
+                  </label>
+                </div>
+
+                {noSpec ? (
+                  <div className="w-full h-11 px-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/90 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center justify-between">
+                    <span className="truncate flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
+                      <span>📦</span>
+                      <span>Không có quy cách con</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setNoSpec(false)}
+                      className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold shrink-0 ml-1 hover:underline"
                     >
-                      {adaptiveConfig.subUnits.map((su) => (
-                        <option key={su} value={su}>
-                          {su}
-                        </option>
-                      ))}
-                    </select>
+                      Nhập quy cách
+                    </button>
                   </div>
-                  {weightUnit === 'Khác' && (
-                    <input
-                      type="text"
-                      required
-                      value={customWeightUnit}
-                      onChange={(e) => setCustomWeightUnit(e.target.value)}
-                      placeholder="Gõ đơn vị..."
-                      className="w-full px-2.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs focus:ring-2 focus:ring-emerald-500"
-                    />
-                  )}
-                  {/* Nút bấm điền nhanh linh hoạt theo ĐVT */}
-                  <div className="flex items-center gap-1 pt-0.5">
-                    {effectiveUnit === 'Bộ' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setWeightValue('1');
-                          setWeightUnit('bộ');
-                          setCustomWeightUnit('');
-                        }}
-                        className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex gap-1">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0.001"
+                        value={weightValue}
+                        onChange={(e) => setWeightValue(e.target.value)}
+                        placeholder={currentPlaceholder}
+                        className="flex-1 min-w-0 h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <select
+                        value={weightUnit}
+                        onChange={(e) => setWeightUnit(e.target.value)}
+                        className="w-20 h-11 px-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-center"
                       >
-                        ⚡ Điền nhanh: 1 bộ
-                      </button>
-                    ) : ['Cái', 'Gói', 'Bịch', 'Túi'].includes(effectiveUnit) ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setWeightValue('1');
-                          setWeightUnit('cái');
-                          setCustomWeightUnit('');
-                        }}
-                        className="text-[10px] text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 font-medium hover:underline"
-                      >
-                        ⚡ Hàng chiếc/đồ chơi (1 cái)
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setWeightValue(effectiveUnit === 'Thùng' ? '24' : '1');
-                          setWeightUnit('cái');
-                          setCustomWeightUnit('');
-                        }}
-                        className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
-                      >
-                        ⚡ Điền nhanh: {effectiveUnit === 'Thùng' ? '24 cái' : '1 cái'}
-                      </button>
+                        {adaptiveConfig.subUnits.map((su) => (
+                          <option key={su} value={su}>
+                            {su}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {weightUnit === 'Khác' && (
+                      <input
+                        type="text"
+                        value={customWeightUnit}
+                        onChange={(e) => setCustomWeightUnit(e.target.value)}
+                        placeholder="Gõ đơn vị..."
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs focus:ring-2 focus:ring-emerald-500"
+                      />
+                    )}
+                    {effectiveUnit === 'Thùng' && (
+                      <div className="flex items-center gap-1 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWeightValue('24');
+                            setWeightUnit('cái');
+                            setCustomWeightUnit('');
+                          }}
+                          className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                        >
+                          ⚡ Điền nhanh: 24 cái / thùng
+                        </button>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
