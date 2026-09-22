@@ -70,7 +70,7 @@ export function RecentFeed({ entries, loading, onSelectEntry }: RecentFeedProps)
 
               <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                 <span className="truncate">
-                  Mã: {entry.barcode} • HSD: {entry.expiry_date}
+                  Mã: {entry.barcode} • {entry.expiry_date === 'Không có HSD' ? 'Không HSD' : `HSD: ${entry.expiry_date}`}
                   {entry.weight ? ` • ${entry.weight}` : ''}
                   {entry.flavor ? ` • ${entry.flavor}` : ''}
                 </span>

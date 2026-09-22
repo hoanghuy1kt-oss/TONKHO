@@ -48,8 +48,13 @@ export function EntryModal({
   const [customWeightUnit, setCustomWeightUnit] = useState<string>('');
   const [flavor, setFlavor] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(existingBatch?.quantity || 1);
+  const [noExpiry, setNoExpiry] = useState<boolean>(
+    existingBatch?.expiry_date === 'Không có HSD'
+  );
   const [expiryDate, setExpiryDate] = useState<string>(
-    existingBatch?.expiry_date || new Date().toISOString().split('T')[0]
+    existingBatch?.expiry_date && existingBatch.expiry_date !== 'Không có HSD'
+      ? existingBatch.expiry_date
+      : new Date().toISOString().split('T')[0]
   );
   const [note, setNote] = useState<string>(existingBatch?.note || '');
   const [photoKey, setPhotoKey] = useState<string>(existingBatch?.photo_key || '');
@@ -81,7 +86,13 @@ export function EntryModal({
     setSelectedFile(null);
     if (existingBatch) {
       setQuantity(existingBatch.quantity);
-      setExpiryDate(existingBatch.expiry_date);
+      const isNoExp = existingBatch.expiry_date === 'Không có HSD';
+      setNoExpiry(isNoExp);
+      setExpiryDate(
+        isNoExp
+          ? new Date().toISOString().split('T')[0]
+          : existingBatch.expiry_date || new Date().toISOString().split('T')[0]
+      );
       setNote(existingBatch.note || '');
       setPhotoKey(existingBatch.photo_key);
       setPhotoPreview(getPhotoUrl(existingBatch.photo_key));
@@ -103,6 +114,7 @@ export function EntryModal({
       setFlavor(existingBatch.flavor || '');
     } else {
       setQuantity(1);
+      setNoExpiry(false);
       setExpiryDate(new Date().toISOString().split('T')[0]);
       setNote('');
       setPhotoKey('');
@@ -186,8 +198,9 @@ export function EntryModal({
       return;
     }
 
-    if (!expiryDate) {
-      setError('Vui lòng chọn hạn sử dụng');
+    const effectiveExpiryDate = noExpiry ? 'Không có HSD' : expiryDate;
+    if (!noExpiry && !expiryDate) {
+      setError('Vui lòng chọn hạn sử dụng hoặc tích chọn Không HSD');
       return;
     }
 
@@ -218,7 +231,7 @@ export function EntryModal({
             rev: existingBatch.rev,
             updates: {
               quantity,
-              expiry_date: expiryDate,
+              expiry_date: effectiveExpiryDate,
               photo_key: currentPhotoKey,
               note: note.trim() || null,
               unit: effectiveUnit,
@@ -241,7 +254,7 @@ export function EntryModal({
           unit: effectiveUnit,
           weight: effectiveWeight,
           flavor: effectiveFlavor || undefined,
-          expiry_date: expiryDate,
+          expiry_date: effectiveExpiryDate,
           quantity,
           note: note.trim() || undefined,
           photo_key: currentPhotoKey,
@@ -401,6 +414,28 @@ export function EntryModal({
                       className="w-full px-2.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 text-base sm:text-xs focus:ring-2 focus:ring-emerald-500"
                     />
                   )}
+                  {/* Nút bấm điền nhanh cho hàng lẻ / đồ chơi */}
+                  <div className="flex items-center gap-1 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWeightValue('1');
+                        const defaultSub =
+                          effectiveUnit === 'Bộ'
+                            ? 'bộ'
+                            : effectiveUnit === 'Hộp'
+                            ? 'cái'
+                            : effectiveUnit === 'Thùng'
+                            ? 'cái'
+                            : 'cái';
+                        setWeightUnit(defaultSub);
+                        setCustomWeightUnit('');
+                      }}
+                      className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                    >
+                      ⚡ Điền nhanh: 1 {effectiveUnit === 'Bộ' ? 'bộ' : (effectiveUnit === 'Hộp' ? 'cái' : (effectiveUnit === 'Thùng' ? 'cái' : 'cái'))}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -423,16 +458,45 @@ export function EntryModal({
             <div className="grid grid-cols-2 gap-2.5">
               {/* Hạn sử dụng */}
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Hạn sử dụng (EXP) *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  className="w-full h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Hạn sử dụng *
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={noExpiry}
+                      onChange={(e) => setNoExpiry(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                      Không HSD
+                    </span>
+                  </label>
+                </div>
+                {noExpiry ? (
+                  <div className="w-full h-11 px-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/90 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center justify-between">
+                    <span className="truncate flex items-center gap-1">
+                      <span>♾️</span>
+                      <span>Không có HSD</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setNoExpiry(false)}
+                      className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold shrink-0 ml-1 hover:underline"
+                    >
+                      Chọn ngày
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="date"
+                    required={!noExpiry}
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                    className="w-full h-11 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-base sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  />
+                )}
               </div>
 
               {/* Số lượng */}

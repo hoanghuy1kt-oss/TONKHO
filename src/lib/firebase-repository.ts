@@ -45,8 +45,12 @@ export class FirebaseInventoryRepository {
       }
     });
 
-    // Sắp xếp theo hạn sử dụng tăng dần (HSD gần nhất lên trước)
-    batches.sort((a, b) => a.expiry_date.localeCompare(b.expiry_date));
+    // Sắp xếp theo hạn sử dụng tăng dần (HSD gần nhất lên trước, không có HSD xếp sau)
+    batches.sort((a, b) => {
+      if (a.expiry_date === 'Không có HSD' && b.expiry_date !== 'Không có HSD') return 1;
+      if (b.expiry_date === 'Không có HSD' && a.expiry_date !== 'Không có HSD') return -1;
+      return a.expiry_date.localeCompare(b.expiry_date);
+    });
 
     const totalQuantity = batches.reduce((sum, b) => sum + (b.quantity || 0), 0);
 

@@ -1,5 +1,6 @@
 export const UNIT_OPTIONS = [
   'Cái',
+  'Bộ',
   'Hộp',
   'Thùng',
   'Chai',
@@ -27,14 +28,14 @@ export interface UnitAdaptiveConfig {
 export function getAdaptiveConfigForUnit(unitName: string): UnitAdaptiveConfig {
   const bulkUnits = ['Thùng', 'Hộp', 'Lốc', 'Vỉ', 'Cây'];
   const liquidUnits = ['Chai', 'Lon', 'Hũ', 'Ly'];
-  const itemUnits = ['Cái', 'Gói', 'Bịch', 'Túi'];
+  const itemUnits = ['Cái', 'Bộ', 'Gói', 'Bịch', 'Túi'];
 
   if (bulkUnits.includes(unitName)) {
     return {
       label: 'Quy cách con *',
-      placeholder: 'VD: 24',
+      placeholder: 'VD: 24 (hoặc 1)',
       defaultSubUnit: 'cái',
-      subUnits: ['cái', 'gói', 'lon', 'chai', 'vỉ', 'hộp', 'kg', 'g', 'Khác'],
+      subUnits: ['cái', 'bộ', 'gói', 'lon', 'chai', 'vỉ', 'hộp', 'kg', 'g', 'Khác'],
     };
   }
 
@@ -48,11 +49,12 @@ export function getAdaptiveConfigForUnit(unitName: string): UnitAdaptiveConfig {
   }
 
   if (itemUnits.includes(unitName)) {
+    const defaultSub = unitName === 'Bộ' ? 'bộ' : (unitName === 'Cái' ? 'cái' : 'g');
     return {
-      label: 'Trọng lượng *',
-      placeholder: 'VD: 500',
-      defaultSubUnit: 'g',
-      subUnits: ['g', 'kg', 'ml', 'l', 'viên', 'miếng', 'cái', 'Khác'],
+      label: 'Quy cách / Trọng lượng *',
+      placeholder: 'VD: 1 hoặc 500',
+      defaultSubUnit: defaultSub,
+      subUnits: ['cái', 'bộ', 'g', 'kg', 'ml', 'l', 'viên', 'miếng', 'Khác'],
     };
   }
 
@@ -60,12 +62,13 @@ export function getAdaptiveConfigForUnit(unitName: string): UnitAdaptiveConfig {
     label: 'Quy cách / Định lượng *',
     placeholder: 'VD: 100',
     defaultSubUnit: 'cái',
-    subUnits: ['cái', 'g', 'kg', 'm', 'ml', 'Khác'],
+    subUnits: ['cái', 'bộ', 'g', 'kg', 'm', 'ml', 'Khác'],
   };
 }
 
 const KNOWN_SUB_UNITS = [
   'cái',
+  'bộ',
   'gói',
   'lon',
   'chai',

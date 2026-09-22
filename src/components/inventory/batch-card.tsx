@@ -14,13 +14,20 @@ export function BatchCard({ batch, onEdit, onDelete }: BatchCardProps) {
   const photoUrl = getPhotoUrl(batch.photo_key);
 
   // Tính số ngày còn lại đến hạn sử dụng
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const exp = new Date(batch.expiry_date);
-  const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const isNoExpiry = batch.expiry_date === 'Không có HSD';
+  let isExpired = false;
+  let isExpiringSoon = false;
 
-  const isExpired = diffDays < 0;
-  const isExpiringSoon = diffDays >= 0 && diffDays <= 60;
+  if (!isNoExpiry) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(batch.expiry_date);
+    if (!isNaN(exp.getTime())) {
+      const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      isExpired = diffDays < 0;
+      isExpiringSoon = diffDays >= 0 && diffDays <= 60;
+    }
+  }
 
   return (
     <div className="flex items-center gap-3 p-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition">
@@ -53,14 +60,16 @@ export function BatchCard({ batch, onEdit, onDelete }: BatchCardProps) {
           </span>
           <span
             className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${
-              isExpired
+              isNoExpiry
+                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                : isExpired
                 ? 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
                 : isExpiringSoon
                 ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
                 : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
             }`}
           >
-            HSD: {batch.expiry_date}
+            {isNoExpiry ? 'Không có HSD' : `HSD: ${batch.expiry_date}`}
           </span>
         </div>
 
