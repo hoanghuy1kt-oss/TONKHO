@@ -66,4 +66,24 @@ export interface ProductBatchesResponse {
   product: Product | null;
   batches: InventoryEntry[];
   totalQuantity: number;
+  totalDisplay?: string;
+  unitDisplay?: string;
+  conversionNote?: string | null;
+  isMultiUnit?: boolean;
+}
+
+export interface StockSummaryItem {
+  barcode: string;
+  name: string;
+  unit?: string | null;
+  units?: string[];
+  weight?: string | null;
+  flavor?: string | null;
+  total_quantity: number;
+  total_display?: string;
+  unit_display?: string;
+  conversion_note?: string | null;
+  unit_breakdown?: Array<{ unit: string; quantity: number }>;
+  is_multi_unit?: boolean;
+  batch_count: number;
 }

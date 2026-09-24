@@ -216,3 +216,149 @@ export function getSpecIcon(spec?: string | null): string {
   }
   return '📦';
 }
+
+export interface BatchForAggregation {
+  quantity: number;
+  unit?: string | null;
+  weight?: string | null;
+}
+
+export interface UnitStockSummary {
+  unit: string;
+  quantity: number;
+}
+
+export interface StockAggregateResult {
+  totalDisplay: string;
+  unitDisplay: string;
+  units: string[];
+  isMultiUnit: boolean;
+  breakdown: UnitStockSummary[];
+  conversionNote: string | null;
+  totalNumeric: number;
+}
+
+const UNIT_ORDER = [
+  'Thùng',
+  'Cây',
+  'Lốc',
+  'Hộp',
+  'Vỉ',
+  'Bịch',
+  'Túi',
+  'Gói',
+  'Chai',
+  'Lon',
+  'Ly',
+  'Hũ',
+  'Bộ',
+  'Cái',
+  'Cuộn',
+];
+
+/**
+ * Gom nhóm và tính toán tổng tồn kho theo từng đơn vị tính,
+ * xử lý trường hợp 1 mã hàng có nhiều đơn vị khác nhau (ví dụ: 1 Thùng + 100 Lon)
+ */
+export function aggregateStockByUnit(
+  batches: BatchForAggregation[],
+  fallbackUnit?: string | null,
+  fallbackWeight?: string | null
+): StockAggregateResult {
+  const counts = new Map<string, number>();
+  const unitSpecs = new Map<string, { value: number; subUnit: string }>();
+
+  let totalNumeric = 0;
+
+  for (const b of batches) {
+    const rawUnit = (b.unit || fallbackUnit || '').trim();
+    const u = rawUnit || 'Chưa đặt';
+    const q = Number(b.quantity) || 0;
+    counts.set(u, (counts.get(u) || 0) + q);
+    totalNumeric += q;
+
+    const w = (b.weight || fallbackWeight || '').trim();
+    if (w && !unitSpecs.has(u)) {
+      const parsed = parseWeightOrSpec(w);
+      const numVal = parseFloat(parsed.value);
+      if (!isNaN(numVal) && numVal > 0 && parsed.unit && parsed.unit !== 'Khác') {
+        unitSpecs.set(u, { value: numVal, subUnit: parsed.unit.toLowerCase() });
+      }
+    }
+  }
+
+  // Sắp xếp các đơn vị theo thứ tự ưu tiên container lớn -> nhỏ
+  const sortedUnits = Array.from(counts.keys()).sort((a, b) => {
+    const idxA = UNIT_ORDER.indexOf(a);
+    const idxB = UNIT_ORDER.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b, 'vi');
+  });
+
+  const breakdown: UnitStockSummary[] = sortedUnits.map((u) => ({
+    unit: u,
+    quantity: counts.get(u) || 0,
+  }));
+
+  const isMultiUnit = breakdown.length > 1;
+
+  let totalDisplay = '';
+  let unitDisplay = '';
+
+  if (breakdown.length === 0) {
+    totalDisplay = '0';
+    unitDisplay = fallbackUnit || 'Chưa đặt';
+  } else if (breakdown.length === 1) {
+    const b = breakdown[0];
+    totalDisplay = `${b.quantity.toLocaleString('vi-VN')} ${b.unit}`;
+    unitDisplay = b.unit;
+  } else {
+    // Nhiều đơn vị tính: "1 Thùng + 100 Lon"
+    totalDisplay = breakdown
+      .map((b) => `${b.quantity.toLocaleString('vi-VN')} ${b.unit}`)
+      .join(' + ');
+    unitDisplay = sortedUnits.join(', ');
+  }
+
+  // Tính toán quy đổi thông minh nếu có quy cách khớp
+  let conversionNote: string | null = null;
+  if (isMultiUnit) {
+    for (const [parentUnit, spec] of unitSpecs.entries()) {
+      const matchedUnit = sortedUnits.find(
+        (u) => u.toLowerCase() === spec.subUnit.toLowerCase()
+      );
+      if (matchedUnit && matchedUnit !== parentUnit) {
+        let totalConverted = 0;
+        let canConvertAll = true;
+
+        for (const b of breakdown) {
+          if (b.unit === matchedUnit) {
+            totalConverted += b.quantity;
+          } else if (b.unit === parentUnit) {
+            totalConverted += b.quantity * spec.value;
+          } else {
+            canConvertAll = false;
+            break;
+          }
+        }
+
+        if (canConvertAll && totalConverted > 0) {
+          conversionNote = `Quy đổi: ~${totalConverted.toLocaleString('vi-VN')} ${matchedUnit}`;
+          break;
+        }
+      }
+    }
+  }
+
+  return {
+    totalDisplay,
+    unitDisplay,
+    units: sortedUnits,
+    isMultiUnit,
+    breakdown,
+    conversionNote,
+    totalNumeric,
+  };
+}

@@ -18,8 +18,10 @@ import {
   InventoryHistory,
   Product,
   ProductBatchesResponse,
+  StockSummaryItem,
   EntryDraft,
 } from '@/types/inventory';
+import { aggregateStockByUnit } from './spec-utils';
 
 export class FirebaseInventoryRepository {
   /**
@@ -53,8 +55,17 @@ export class FirebaseInventoryRepository {
     });
 
     const totalQuantity = batches.reduce((sum, b) => sum + (b.quantity || 0), 0);
+    const agg = aggregateStockByUnit(batches, product?.unit, product?.weight);
 
-    return { product, batches, totalQuantity };
+    return {
+      product,
+      batches,
+      totalQuantity,
+      totalDisplay: agg.totalDisplay,
+      unitDisplay: agg.unitDisplay,
+      conversionNote: agg.conversionNote,
+      isMultiUnit: agg.isMultiUnit,
+    };
   }
 
   /**
@@ -360,11 +371,19 @@ export class FirebaseInventoryRepository {
   /**
    * Thống kê tổng hợp cho Admin: tổng số lượng theo từng mặt hàng
    */
-  async getAdminStockSummary(): Promise<
-    Array<{ barcode: string; name: string; unit?: string | null; weight?: string | null; flavor?: string | null; total_quantity: number; batch_count: number }>
-  > {
+  async getAdminStockSummary(): Promise<StockSummaryItem[]> {
     const productsSnap = await getDocs(collection(getDb(), 'products'));
-    const productsMap = new Map<string, { barcode: string; name: string; unit?: string | null; weight?: string | null; flavor?: string | null; total_quantity: number; batch_count: number }>();
+    const productsMap = new Map<
+      string,
+      {
+        barcode: string;
+        name: string;
+        unit?: string | null;
+        weight?: string | null;
+        flavor?: string | null;
+        batches: InventoryEntry[];
+      }
+    >();
 
     productsSnap.forEach((docSnap) => {
       const p = docSnap.data() as Product;
@@ -374,8 +393,7 @@ export class FirebaseInventoryRepository {
         unit: p.unit || null,
         weight: p.weight || null,
         flavor: p.flavor || null,
-        total_quantity: 0,
-        batch_count: 0,
+        batches: [],
       });
     });
 
@@ -393,8 +411,7 @@ export class FirebaseInventoryRepository {
           unit: e.unit || null,
           weight: e.weight || null,
           flavor: e.flavor || null,
-          total_quantity: 0,
-          batch_count: 0,
+          batches: [],
         };
         productsMap.set(e.barcode, item);
       } else {
@@ -402,11 +419,28 @@ export class FirebaseInventoryRepository {
         if (!item.weight && e.weight) item.weight = e.weight;
         if (!item.flavor && e.flavor) item.flavor = e.flavor;
       }
-      item.total_quantity += e.quantity || 0;
-      item.batch_count += 1;
+      item.batches.push(e);
     });
 
-    const result = Array.from(productsMap.values());
+    const result: StockSummaryItem[] = Array.from(productsMap.values()).map((p) => {
+      const agg = aggregateStockByUnit(p.batches, p.unit, p.weight);
+      return {
+        barcode: p.barcode,
+        name: p.name,
+        unit: agg.unitDisplay,
+        units: agg.units,
+        weight: p.weight || null,
+        flavor: p.flavor || null,
+        total_quantity: agg.totalNumeric,
+        total_display: agg.totalDisplay,
+        unit_display: agg.unitDisplay,
+        conversion_note: agg.conversionNote,
+        unit_breakdown: agg.breakdown,
+        is_multi_unit: agg.isMultiUnit,
+        batch_count: p.batches.length,
+      };
+    });
+
     result.sort((a, b) => b.total_quantity - a.total_quantity);
     return result;
   }

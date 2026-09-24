@@ -6,6 +6,7 @@ import { useStaff } from '@/hooks/use-staff';
 import { useEntries } from '@/hooks/use-entries';
 import { InventoryEntry, Product } from '@/types/inventory';
 import { normalizeBarcode } from '@/lib/barcode-utils';
+import { aggregateStockByUnit } from '@/lib/spec-utils';
 import { BarcodeScannerModal } from '@/components/scanner/barcode-scanner-modal';
 import { StaffModal } from '@/components/staff/staff-modal';
 import { EntryModal } from '@/components/inventory/entry-modal';
@@ -37,6 +38,8 @@ export default function Home() {
 
   // Lô được chọn để chỉnh sửa (null = thêm lô mới)
   const [selectedBatchForEdit, setSelectedBatchForEdit] = useState<InventoryEntry | null>(null);
+
+  const batchAgg = aggregateStockByUnit(batches, product?.unit, product?.weight);
 
   // Mở modal nhập tên nếu chưa có
   useEffect(() => {
@@ -247,8 +250,13 @@ export default function Home() {
                   <div className="text-right shrink-0">
                     <span className="text-[11px] text-zinc-400 font-semibold block">TỔNG TỒN</span>
                     <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                      {totalQuantity}
+                      {batchAgg.totalDisplay || totalQuantity}
                     </span>
+                    {batchAgg.conversionNote && (
+                      <span className="text-[10px] text-zinc-400 font-normal block">
+                        {batchAgg.conversionNote}
+                      </span>
+                    )}
                   </div>
                 </div>
 

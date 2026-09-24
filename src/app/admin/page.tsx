@@ -2,20 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { InventoryEntry, InventoryHistory } from '@/types/inventory';
+import { InventoryEntry, InventoryHistory, StockSummaryItem } from '@/types/inventory';
 import { exportInventoryToExcel } from '@/lib/excel-export';
 import { getPhotoUrl } from '@/lib/photo-url';
-import { getSpecIcon } from '@/lib/spec-utils';
-
-interface StockSummaryItem {
-  barcode: string;
-  name: string;
-  unit?: string | null;
-  weight?: string | null;
-  flavor?: string | null;
-  total_quantity: number;
-  batch_count: number;
-}
+import { getSpecIcon, aggregateStockByUnit } from '@/lib/spec-utils';
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
@@ -325,16 +315,26 @@ export default function AdminPage() {
                     <div className="text-right shrink-0">
                       <span className="text-[10px] text-zinc-400 block font-semibold">TỔNG TỒN</span>
                       <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                        {item.total_quantity.toLocaleString('vi-VN')} {item.unit || ''}
+                        {item.total_display || `${item.total_quantity.toLocaleString('vi-VN')} ${item.unit || ''}`}
                       </span>
+                      {item.conversion_note && (
+                        <span className="text-[10px] text-zinc-400 font-normal block mt-0.5">
+                          {item.conversion_note}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   {/* Attribute badges */}
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    {item.unit && (
-                      <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium">
-                        ĐVT: {item.unit}
+                    {(item.unit_display || item.unit) && (
+                      <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium flex items-center gap-1">
+                        <span>ĐVT: {item.unit_display || item.unit}</span>
+                        {item.is_multi_unit && (
+                          <span className="px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[9px] font-bold">
+                            Nhiều ĐVT
+                          </span>
+                        )}
                       </span>
                     )}
                     {item.weight && (
@@ -403,10 +403,17 @@ export default function AdminPage() {
                           {item.name}
                         </td>
                         <td className="py-3 px-3 text-center text-zinc-600 dark:text-zinc-300">
-                          {item.unit ? (
-                            <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 font-medium">
-                              {item.unit}
-                            </span>
+                          {item.unit_display || item.unit ? (
+                            <div className="inline-flex items-center gap-1">
+                              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 font-medium">
+                                {item.unit_display || item.unit}
+                              </span>
+                              {item.is_multi_unit && (
+                                <span className="px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
+                                  Nhiều ĐVT
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             '-'
                           )}
@@ -418,8 +425,15 @@ export default function AdminPage() {
                           {item.flavor || '-'}
                         </td>
                         <td className="py-3 px-4 text-center text-zinc-500">{item.batch_count}</td>
-                        <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                          {item.total_quantity.toLocaleString('vi-VN')} {item.unit || ''}
+                        <td className="py-3 px-4 text-right">
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                            {item.total_display || `${item.total_quantity.toLocaleString('vi-VN')} ${item.unit || ''}`}
+                          </div>
+                          {item.conversion_note && (
+                            <div className="text-[10px] text-zinc-400 font-normal">
+                              {item.conversion_note}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
@@ -744,6 +758,7 @@ export default function AdminPage() {
         const productSummary =
           summaries.find((s) => s.barcode === selectedProductDetail.barcode) || selectedProductDetail;
         const productBatches = entries.filter((e) => e.barcode === selectedProductDetail.barcode);
+        const batchAgg = aggregateStockByUnit(productBatches, productSummary.unit, productSummary.weight);
 
         return (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-xs">
@@ -781,29 +796,50 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                   <div className="p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
                     <span className="text-[10px] sm:text-[11px] text-zinc-400">Tổng tồn kho</span>
-                    <div className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                      {productSummary.total_quantity.toLocaleString('vi-VN')} {productSummary.unit || ''}
+                    <div className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 break-words leading-tight mt-0.5">
+                      {batchAgg.totalDisplay}
                     </div>
+                    {batchAgg.conversionNote && (
+                      <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal block mt-1">
+                        {batchAgg.conversionNote}
+                      </span>
+                    )}
                   </div>
                   <div className="p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
                     <span className="text-[10px] sm:text-[11px] text-zinc-400">Số lượng lô</span>
-                    <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                    <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
                       {productBatches.length} lô
                     </div>
                   </div>
                   <div className="p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                    <span className="text-[10px] sm:text-[11px] text-zinc-400">Đơn vị tính</span>
-                    <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                      {productSummary.unit || 'Chưa đặt'}
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-[10px] sm:text-[11px] text-zinc-400">Đơn vị tính</span>
+                      {batchAgg.isMultiUnit && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[9px] font-bold">
+                          {batchAgg.units.length} ĐVT
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5" title={batchAgg.unitDisplay}>
+                      {batchAgg.unitDisplay || 'Chưa đặt'}
                     </div>
                   </div>
                   <div className="p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
                     <span className="text-[10px] sm:text-[11px] text-zinc-400">Quy cách / Trọng lượng</span>
-                    <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                    <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5" title={productSummary.weight || 'Chưa đặt'}>
                       {productSummary.weight || 'Chưa đặt'}
                     </div>
                   </div>
                 </div>
+
+                {batchAgg.isMultiUnit && (
+                  <div className="px-3.5 py-2.5 bg-amber-50/90 dark:bg-amber-950/40 rounded-xl border border-amber-200/70 dark:border-amber-900/60 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                    <span className="text-base shrink-0">ℹ️</span>
+                    <span>
+                      Sản phẩm này có <strong>{batchAgg.units.length} đơn vị tính khác nhau</strong> ({batchAgg.unitDisplay}). Tổng tồn được phân tách chính xác: <strong>{batchAgg.totalDisplay}</strong> để tránh cộng gộp sai lệch số lượng.
+                    </span>
+                  </div>
+                )}
 
                 {productSummary.flavor && (
                   <div className="px-3.5 py-2 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-100 dark:border-purple-900 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2">
